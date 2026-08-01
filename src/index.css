@@ -1,0 +1,63 @@
+
+body {
+  margin: 0;
+  background: black;
+  color: yellow;
+  overflow: hidden;
+}
+.galaxy {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('/galaxy.png') repeat center center;
+  background-size: cover;
+  z-index: 1;
+  animation: moveBg 120s linear infinite;
+  opacity: 0.3;
+}
+@keyframes moveBg {
+  0% { background-position: 0 0; }
+  100% { background-position: 2000px 2000px; }
+}
+.coin-button {
+  transition: transform 0.1s ease;
+}
+.coin-button:active {
+  transform: scale(0.92);
+}
+.energy-bar {
+  height: 20px;
+  border-radius: 10px;
+  background: linear-gradient(to right, gold, yellow);
+  margin-top: 12px;
+  box-shadow: 0 0 20px gold;
+}
+.icon {
+  filter: brightness(1.5) drop-shadow(0 0 2px gold);
+}
+
+.progress-anim{transition: width 0.3s ease; background: linear-gradient(270deg, #FFD21E, #FFB84D, #FFD21E); background-size: 400% 400%; animation: shine 3s linear infinite;}
+@keyframes shine { 0%{background-position:0% 50%} 100%{background-position:100% 50%} }
+
+.history-scroll::-webkit-scrollbar{height:6px;width:6px}
+.history-scroll::-webkit-scrollbar-thumb{background:#333;border-radius:6px}
+
+
+/* Visual refresh */
+body{background:radial-gradient(1200px 800px at 50% -10%, #141414 0%, #0b0b0b 60%, #080808 100%)}
+.tap-pulse{ position:relative; box-shadow:0 10px 24px rgba(255,210,30,.2); transition:transform .1s ease }
+.tap-pulse:hover{ transform:translateY(-1px); box-shadow:0 14px 28px rgba(255,210,30,.25) }
+.tap-pulse:active{ transform:translateY(0) scale(.98) }
+@keyframes modalIn { from{ transform:scale(.96); opacity:.0 } to{ transform:scale(1); opacity:1 } }
+.modal-card{ animation: modalIn .18s ease both }
+@keyframes floatUp { 0%{ opacity:0; transform:translate(-50%, 10px) scale(.9)} 20%{opacity:1} 100%{ opacity:0; transform:translate(-50%, -26px) scale(1)} }
+.popup-float{ position:absolute; left:50%; top:-6px; transform:translateX(-50%); font-weight:800; color:#FFD21E; text-shadow:0 2px 8px rgba(255,210,30,.35); animation: floatUp .9s ease-out forwards; }
+
+/* Energy progress bar */
+.energyBarFill{ background: linear-gradient(90deg, #FFD21E, #FFB84D, #FFD21E); background-size: 300% 100%; animation: shine 3s linear infinite; transition: width .3s ease; }
+@keyframes shine { 0%{background-position:0% 50%} 100%{background-position:100% 50%} }
+
+/* History scrollbar */
+.history-scroll::-webkit-scrollbar{height:6px;width:6px}
+.history-scroll::-webkit-scrollbar-thumb{background:#333;border-radius:6px}
