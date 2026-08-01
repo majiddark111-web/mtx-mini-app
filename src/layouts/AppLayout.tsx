@@ -1,0 +1,10 @@
+import { Outlet, useLocation } from 'react-router-dom';
+import { useGamePersistence } from '../hooks/useGamePersistence';
+import { useTelegramUser } from '../hooks/useTelegramUser';
+import { BottomNavigation } from '../components/navigation/BottomNavigation';
+
+export function AppLayout() {
+  useTelegramUser(); useGamePersistence();
+  const location = useLocation();
+  return <div className="app-shell"><Outlet />{location.pathname !== '/game' && <BottomNavigation />}</div>;
+}
