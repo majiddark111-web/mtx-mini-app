@@ -48,7 +48,3 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .history-list { border: 1px solid #292929; border-radius: 12px; max-height: 150px; overflow-y: auto; }
 .history-list div { border-bottom: 1px solid #252525; display: flex; flex-direction: column; font-size: .75rem; gap: 4px; padding: 8px 10px; }
 .history-list time { color: #888; }
-@keyframes move-background { to { background-position: 2000px 2000px; } }
-@keyframes shine { to { background-position: 100% 50%; } }
-@keyframes modal-in { from { opacity: 0; transform: scale(.96); } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }

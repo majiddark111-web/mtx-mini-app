@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ASSETS } from '../../assets';
 import { useEnergyRecharge } from '../../hooks/useEnergyRecharge';
 import { useAppStore } from '../../store/useAppStore';
 import { BoostModal } from './BoostModal';
@@ -17,7 +18,7 @@ export function GameScreen() {
     <div className="galaxy" />
     <section className="game-content">
       <header className="profile-row">{user.avatar && <img src={user.avatar} alt="" />}<span>@{user.username}</span></header>
-      <div className="tap-zone"><strong className="score">{score} MTX</strong><button className="coin-button" type="button" aria-label="Tap Lumos coin" onClick={tap}><img src="./mtx.png" alt="MTX coin" /></button>
+      <div className="tap-zone"><strong className="score">{score} MTX</strong><button className="coin-button" type="button" aria-label="Tap Lumos coin" onClick={tap}><img src={ASSETS.coin} alt="MTX coin" /></button>
         <div className="energy-track"><div style={{ width: `${energyPercentage}%` }} /></div><span>Energy: {energy} / {maxEnergy}</span>
       </div>
       <div className="game-actions"><button type="button" onClick={() => setModal('boost')}>⚡<span>Boost</span></button><button type="button" onClick={() => setModal('earn')}>🎯<span>Earn</span></button></div>

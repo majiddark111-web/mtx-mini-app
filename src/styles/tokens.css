@@ -1,0 +1,10 @@
+:root {
+  --color-accent: #ffd21e;
+  --color-accent-warm: #ffb84d;
+  --color-background: #080808;
+  --color-surface: #181818;
+  --color-border: #2a2a2a;
+  --color-muted: #aaa;
+  --radius-card: 16px;
+  --radius-modal: 20px;
+}
