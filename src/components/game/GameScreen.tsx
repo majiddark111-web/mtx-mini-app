@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ASSETS } from '../../assets';
 import { useEnergyRecharge } from '../../hooks/useEnergyRecharge';
+import { useTapAction } from '../../hooks/useTapAction';
 import { useAppStore } from '../../store/useAppStore';
 import { BoostModal } from './BoostModal';
 import { EarnModal } from './EarnModal';
@@ -10,7 +11,7 @@ export function GameScreen() {
   const score = useAppStore((state) => state.score);
   const energy = useAppStore((state) => state.energy);
   const maxEnergy = useAppStore((state) => state.maxEnergy);
-  const tap = useAppStore((state) => state.tap);
+  const tap = useTapAction();
   const user = useAppStore((state) => state.user);
   useEnergyRecharge();
   const energyPercentage = Math.min(100, Math.max(0, energy / Math.max(1, maxEnergy) * 100));

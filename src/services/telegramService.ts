@@ -2,10 +2,22 @@ import type { TelegramUser, TelegramWebApp } from '../types/telegram';
 
 export function getTelegramApp(): TelegramWebApp | undefined { return window.Telegram?.WebApp; }
 export function getTelegramUser(): TelegramUser | undefined { return getTelegramApp()?.initDataUnsafe?.user; }
-export function initializeTelegram(): void { const app = getTelegramApp(); app?.ready?.(); app?.expand?.(); }
+export function getTelegramInitData(): string { return getTelegramApp()?.initData ?? ''; }
+function applyTheme(): void {
+  const app = getTelegramApp();
+  document.documentElement.dataset.telegramTheme = app?.colorScheme ?? 'dark';
+  for (const [name, value] of Object.entries(app?.themeParams ?? {})) document.documentElement.style.setProperty(`--tg-${name.replace(/_/g, '-')}`, value);
+}
+export function initializeTelegram(): () => void {
+  const app = getTelegramApp();
+  app?.ready?.(); app?.expand?.(); applyTheme();
+  app?.onEvent?.('themeChanged', applyTheme);
+  app?.CloudStorage?.setItem('lumos_last_seen', String(Date.now()));
+  return () => app?.offEvent?.('themeChanged', applyTheme);
+}
 export function openExternalLink(url: string): void {
   const app = getTelegramApp();
   if (app?.openLink) app.openLink(url);
   else window.open(url, '_blank', 'noopener,noreferrer');
 }
-export function hapticTap(): void { if ('vibrate' in navigator) navigator.vibrate(10); }
+export function hapticTap(): void { const feedback = getTelegramApp()?.HapticFeedback; if (feedback) feedback.impactOccurred('light'); else if ('vibrate' in navigator) navigator.vibrate(10); }
