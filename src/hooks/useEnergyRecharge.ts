@@ -6,10 +6,12 @@ export function useEnergyRecharge(): void {
   const energy = useAppStore((state) => state.energy);
   const maxEnergy = useAppStore((state) => state.maxEnergy);
   const energyLevel = useAppStore((state) => state.energyLevel);
+  const authStatus = useAppStore((state) => state.authStatus);
   const recharge = useAppStore((state) => state.recharge);
   useEffect(() => {
     if (energy >= maxEnergy) return undefined;
-    const timer = window.setTimeout(recharge, getRechargeInterval({ energy, maxEnergy, energyLevel }));
+    const interval = authStatus === 'authenticated' ? 1_000 : getRechargeInterval({ energy, maxEnergy, energyLevel });
+    const timer = window.setTimeout(recharge, interval);
     return () => window.clearTimeout(timer);
-  }, [energy, maxEnergy, energyLevel, recharge]);
+  }, [authStatus, energy, maxEnergy, energyLevel, recharge]);
 }

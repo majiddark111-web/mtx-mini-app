@@ -2,8 +2,8 @@ import type { Mission } from '../types/game';
 
 export const DEFAULT_GAME_STATE = {
   score: 0,
-  energy: 750,
-  maxEnergy: 750,
+  energy: 1_000,
+  maxEnergy: 1_000,
   tapLevel: 0,
   energyLevel: 0,
   tapPower: 1,
