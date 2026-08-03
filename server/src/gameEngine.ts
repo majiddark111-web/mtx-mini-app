@@ -1,4 +1,6 @@
 import { GAME_CONFIG } from './gameConfig.ts';
+import { effectiveProfitPerHour } from '../../economy/economyService.ts';
+import { ECONOMY_CONFIG, type EconomyConfig } from '../../economy/economyConfig.ts';
 
 export interface ServerGameState {
   userId: string;
@@ -32,13 +34,13 @@ export function rechargeEnergy(state: ServerGameState, now: number): ServerGameS
   return { ...state, energy: Math.min(state.maximumEnergy, state.energy + elapsedSeconds * GAME_CONFIG.energyRechargePerSecond), lastEnergyAt: state.lastEnergyAt + elapsedSeconds * 1_000 };
 }
 
-export function calculateOfflineProfit(profitPerHour: number, elapsedMs: number): number {
-  const cappedHours = Math.min(GAME_CONFIG.offlineProfitCapHours, Math.max(0, elapsedMs) / 3_600_000);
+export function calculateOfflineProfit(profitPerHour: number, elapsedMs: number, economy: EconomyConfig = ECONOMY_CONFIG): number {
+  const cappedHours = Math.min(economy.sources.offline.capHours, Math.max(0, elapsedMs) / 3_600_000);
   return Math.floor(Math.max(0, profitPerHour) * cappedHours);
 }
 
-export function applyOfflineProfit(state: ServerGameState, now: number): { state: ServerGameState; offlineProfit: number } {
-  const offlineProfit = calculateOfflineProfit(state.profitPerHour, now - state.lastSeenAt);
+export function applyOfflineProfit(state: ServerGameState, now: number, economy: EconomyConfig = ECONOMY_CONFIG): { state: ServerGameState; offlineProfit: number } {
+  const offlineProfit = calculateOfflineProfit(effectiveProfitPerHour(state.profitPerHour, economy), now - state.lastSeenAt, economy);
   return { state: { ...rechargeEnergy(state, now), coins: state.coins + offlineProfit, lastSeenAt: now, version: state.version + 1 }, offlineProfit };
 }
 
