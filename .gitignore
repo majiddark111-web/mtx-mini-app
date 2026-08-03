@@ -6,3 +6,4 @@ dist/
 *.log
 .build-verification/
 dist-phase3/
+dist-phase4/
