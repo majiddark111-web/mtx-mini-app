@@ -35,3 +35,7 @@ CREATE TABLE IF NOT EXISTS lumos_payments (
   status TEXT NOT NULL CHECK (status IN ('pending', 'confirmed', 'failed', 'refunded')),
   created_at TIMESTAMPTZ NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS lumos_daily_claims (user_id TEXT PRIMARY KEY, claim_day DATE NOT NULL, streak INTEGER NOT NULL CHECK (streak BETWEEN 1 AND 7));
+CREATE TABLE IF NOT EXISTS lumos_mission_claims (user_id TEXT NOT NULL, mission_id TEXT NOT NULL, period_key TEXT NOT NULL, claimed_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (user_id, mission_id, period_key));
+CREATE TABLE IF NOT EXISTS lumos_referrals (referee_id TEXT PRIMARY KEY, referrer_id TEXT NOT NULL, device_hash TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL, CHECK (referee_id <> referrer_id));

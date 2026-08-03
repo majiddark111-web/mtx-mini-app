@@ -7,12 +7,15 @@ import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
 import { catalogFor, CommerceStorage } from './commerce.ts';
 import { paymentConfirmationSchema, purchaseSchema } from './schema.ts';
+import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
+import { SocialStorage } from './social.ts';
 import type { Env } from './types.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
 const defaultGameStorage = new GameStorage();
 const defaultCommerceStorage = new CommerceStorage();
+const defaultSocialStorage = new SocialStorage();
 
 const json = (body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders } });
 const clientIp = (request: Request): string => request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
@@ -31,7 +34,7 @@ function validateEnv(env: Env): void {
 }
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
-  return handleRequestWithStorage(request, env, defaultGameStorage, defaultCommerceStorage);
+  return handleRequestWithStorage(request, env, defaultGameStorage, defaultCommerceStorage, defaultSocialStorage);
 }
 
 async function authenticatedUserId(request: Request, env: Env): Promise<string | null> {
@@ -41,7 +44,7 @@ async function authenticatedUserId(request: Request, env: Env): Promise<string |
   return claims.sub;
 }
 
-export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage): Promise<Response> {
+export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage): Promise<Response> {
   const cors = corsHeaders(request, env);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
@@ -73,6 +76,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const current = await gameStorage.stateFor(userId, Date.now());
       const result = applyOfflineProfit(current, Date.now(), await loadEconomyConfig(env));
       gameStorage.saveHot(result.state);
+      await socialStorage.recordScore(userId, userId, result.state.coins);
       return json({ state: result.state, offlineProfit: result.offlineProfit }, 200, cors);
     }
     if (url.pathname === '/api/economy/config' && request.method === 'GET') {
@@ -137,11 +141,38 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       }
       return json({ transaction: outcome.record, duplicate: outcome.duplicate }, 200, cors);
     }
+    if (url.pathname === '/api/missions' && request.method === 'GET') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      return json({ missions: socialStorage.missions(userId, await gameStorage.stateFor(userId, Date.now()), Date.now()) }, 200, cors);
+    }
+    if (url.pathname === '/api/missions/claim' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const body = missionClaimSchema.parse(await request.json()); return json(await socialStorage.claimMission(userId, body.missionId, gameStorage, Date.now()), 200, cors);
+    }
+    if (url.pathname === '/api/daily' && request.method === 'GET') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.dailyStatus(userId, Date.now()), 200, cors);
+    }
+    if (url.pathname === '/api/daily/claim' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(await socialStorage.claimDaily(userId, gameStorage, Date.now()), 200, cors);
+    }
+    if (url.pathname === '/api/referral' && request.method === 'GET') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.referralStatus(userId), 200, cors);
+    }
+    if (url.pathname === '/api/referral/accept' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const body = referralAcceptSchema.parse(await request.json()); await socialStorage.acceptReferral(userId, body.code, body.deviceHash, gameStorage, Date.now()); return json({ accepted: true }, 200, cors);
+    }
+    if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); await socialStorage.recordScore(userId, userId, state.coins); return json({ entries: await socialStorage.leaders() }, 200, cors);
+    }
+    if (url.pathname === '/api/profile' && request.method === 'GET') {
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); return json({ state, inventory: commerceStorage.inventory(userId), referral: socialStorage.referralStatus(userId), payments: commerceStorage.paymentHistory(userId) }, 200, cors);
+    }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {
     if (error instanceof ValidationError || error instanceof SyntaxError) return json({ error: 'Invalid request' }, 400, cors);
     if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') return json({ error: 'Insufficient coins' }, 402, cors);
     if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'PRICE_CHANGED')) return json({ error: 'Item unavailable' }, 409, cors);
+    if (error instanceof Error && (error.message.startsWith('MISSION_') || error.message.startsWith('DAILY_') || error.message.startsWith('REFERRAL_'))) return json({ error: error.message }, 409, cors);
     return json({ error: 'Unauthorized' }, 401, cors);
   }
 }

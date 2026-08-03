@@ -59,6 +59,9 @@ export const paymentConfirmationSchema: Schema<{ provider: 'ton' | 'usdt'; trans
   },
 };
 
+export const missionClaimSchema: Schema<{ missionId: string }> = { parse(value) { const body = value as Record<string, unknown>; if (!body || typeof body !== 'object' || Object.keys(body).some((key) => key !== 'missionId') || typeof body.missionId !== 'string' || !/^(daily-taps|weekly-coins|monthly-level)$/.test(body.missionId)) throw new ValidationError('Invalid mission'); return { missionId: body.missionId }; } };
+export const referralAcceptSchema: Schema<{ code: string; deviceHash: string }> = { parse(value) { const body = value as Record<string, unknown>; if (!body || typeof body !== 'object' || Object.keys(body).some((key) => key !== 'code' && key !== 'deviceHash') || typeof body.code !== 'string' || !/^LUMOS-[a-zA-Z0-9_-]{1,64}$/.test(body.code) || typeof body.deviceHash !== 'string' || !/^[a-f0-9]{64}$/.test(body.deviceHash)) throw new ValidationError('Invalid referral'); return { code: body.code, deviceHash: body.deviceHash }; } };
+
 export const telegramUserSchema: Schema<AuthenticatedUser> = {
   parse(value) {
     if (!value || typeof value !== 'object') throw new ValidationError('Telegram user is missing');

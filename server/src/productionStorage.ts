@@ -1,5 +1,6 @@
 import type { ServerGameState } from './gameEngine.ts';
 import { GameStorage, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
+import type { LeaderboardEntry, LeaderboardRepository } from './social.ts';
 
 export interface RedisCommands { command<T>(parts: string[]): Promise<T>; }
 export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; }
@@ -32,4 +33,15 @@ export class PostgresGameRepository implements GameRepository {
 
 export function productionGameStorage(redis: RedisCommands, database: PostgresQueries): GameStorage {
   return new GameStorage(new PostgresGameRepository(database), new RedisTapEventQueue(redis));
+}
+
+export class RedisLeaderboardRepository implements LeaderboardRepository {
+  constructor(privateRedis: RedisCommands) { this.redis = privateRedis; }
+  private readonly redis: RedisCommands;
+  async record(userId: string, username: string, coins: number): Promise<void> { await this.redis.command(['ZADD', 'lumos:leaderboard:global', String(coins), userId]); await this.redis.command(['HSET', 'lumos:leaderboard:names', userId, username]); }
+  async leaders(limit: number): Promise<LeaderboardEntry[]> {
+    const values = await this.redis.command<string[]>(['ZREVRANGE', 'lumos:leaderboard:global', '0', String(Math.max(0, limit - 1)), 'WITHSCORES']); const entries: LeaderboardEntry[] = [];
+    for (let index = 0; index < values.length; index += 2) { const userId = values[index]; const username = await this.redis.command<string | null>(['HGET', 'lumos:leaderboard:names', userId]); entries.push({ userId, username: username ?? userId, coins: Number(values[index + 1]), rank: index / 2 + 1 }); }
+    return entries;
+  }
 }
