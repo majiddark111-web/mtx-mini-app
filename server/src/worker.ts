@@ -17,4 +17,9 @@ export default {
     }
     return handleRequest(request, env);
   },
+  async scheduled(_controller: unknown, env: Env): Promise<void> {
+    if (!env.REDIS || !env.POSTGRES) return;
+    storage ??= productionGameStorage(env.REDIS, env.POSTGRES);
+    await storage.flushDirty();
+  },
 };

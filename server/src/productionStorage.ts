@@ -5,7 +5,9 @@ export interface RedisCommands { command<T>(parts: string[]): Promise<T>; }
 export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; }
 
 export class RedisTapEventQueue implements TapEventQueue {
-  constructor(private readonly redis: RedisCommands, private readonly key = 'lumos:tap-events') {}
+  private readonly redis: RedisCommands;
+  private readonly key: string;
+  constructor(redis: RedisCommands, key = 'lumos:tap-events') { this.redis = redis; this.key = key; }
   async enqueue(event: QueuedTapEvent): Promise<void> { await this.redis.command(['RPUSH', this.key, JSON.stringify(event)]); }
   size(): number { throw new Error('Use sizeAsync for a remote Redis queue'); }
   async sizeAsync(): Promise<number> { return Number(await this.redis.command<number>(['LLEN', this.key])); }
@@ -16,7 +18,8 @@ export class RedisTapEventQueue implements TapEventQueue {
 }
 
 export class PostgresGameRepository implements GameRepository {
-  constructor(private readonly database: PostgresQueries) {}
+  private readonly database: PostgresQueries;
+  constructor(database: PostgresQueries) { this.database = database; }
   async get(userId: string): Promise<ServerGameState | null> {
     const result = await this.database.query<ServerGameState>('SELECT state FROM lumos_game_state WHERE user_id = $1', [userId]);
     const row = result.rows[0] as unknown as { state?: ServerGameState } | undefined;
@@ -30,4 +33,3 @@ export class PostgresGameRepository implements GameRepository {
 export function productionGameStorage(redis: RedisCommands, database: PostgresQueries): GameStorage {
   return new GameStorage(new PostgresGameRepository(database), new RedisTapEventQueue(redis));
 }
-

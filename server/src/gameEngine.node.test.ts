@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { applyOfflineProfit, applyTapBatch, calculateOfflineProfit, createGameState } from './gameEngine.ts';
 import { GameStorage, MemoryGameRepository, MemoryTapEventQueue } from './gameStorage.ts';
+import { PostgresGameRepository, RedisTapEventQueue, type PostgresQueries, type RedisCommands } from './productionStorage.ts';
 
 describe('server-authoritative game engine', () => {
   it('rejects and flags an implausible tap rate', () => {
@@ -42,5 +43,34 @@ describe('server-authoritative game engine', () => {
     assert.equal(repository.writes, 0);
     assert.equal(await storage.flushDirty(), 100);
     assert.equal(repository.writes, 100);
+  });
+
+  it('routes load through the Redis adapter and batches PostgreSQL writes', async () => {
+    class FakeRedis implements RedisCommands {
+      commands = 0;
+      async command<T>(parts: string[]): Promise<T> { this.commands += 1; return (parts[0] === 'LLEN' ? this.commands : 1) as T; }
+    }
+    class FakePostgres implements PostgresQueries {
+      reads = 0;
+      writes = 0;
+      async query<T>(sql: string): Promise<{ rows: T[] }> {
+        if (sql.startsWith('SELECT')) this.reads += 1; else this.writes += 1;
+        return { rows: [] };
+      }
+    }
+    const redis = new FakeRedis();
+    const postgres = new FakePostgres();
+    const storage = new GameStorage(new PostgresGameRepository(postgres), new RedisTapEventQueue(redis));
+    for (let index = 0; index < 5_000; index += 1) {
+      const userId = String(index % 100);
+      const state = await storage.stateFor(userId, index);
+      storage.saveHot({ ...state, coins: state.coins + 1 });
+      await storage.queue.enqueue({ userId, batch: { taps: 1, durationMs: 1_000, batchId: `redis-${String(index).padStart(12, '0')}` }, acceptedTaps: 1, receivedAt: index });
+    }
+    assert.equal(redis.commands, 5_000);
+    assert.equal(postgres.reads, 100);
+    assert.equal(postgres.writes, 0);
+    assert.equal(await storage.flushDirty(), 100);
+    assert.equal(postgres.writes, 100);
   });
 });
