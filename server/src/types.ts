@@ -7,6 +7,7 @@ export interface Env {
   AUTH_MAX_AGE_SECONDS?: string;
   REDIS?: RedisCommands;
   POSTGRES?: PostgresQueries;
+  ECONOMY_CONFIG?: { get(key: string): Promise<string | null> };
 }
 
 export interface AuthenticatedUser {

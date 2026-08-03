@@ -4,6 +4,7 @@ import { GameStorage } from './gameStorage.ts';
 import { RateLimiter } from './rateLimiter.ts';
 import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
 import { validateTelegramInitData } from './telegramAuth.ts';
+import { loadEconomyConfig } from './economyConfigProvider.ts';
 import type { Env } from './types.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
@@ -67,9 +68,15 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       if (!userLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
       const current = await gameStorage.stateFor(userId, Date.now());
-      const result = applyOfflineProfit(current, Date.now());
+      const result = applyOfflineProfit(current, Date.now(), await loadEconomyConfig(env));
       gameStorage.saveHot(result.state);
       return json({ state: result.state, offlineProfit: result.offlineProfit }, 200, cors);
+    }
+    if (url.pathname === '/api/economy/config' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      return json({ economy: await loadEconomyConfig(env) }, 200, cors);
     }
     if (url.pathname === '/api/game/taps' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);
