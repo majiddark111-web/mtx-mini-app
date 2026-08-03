@@ -1,3 +1,4 @@
 import type { StateCreator } from 'zustand';
-export interface InventorySlice { inventory: { itemIds: string[] }; }
-export const createInventorySlice: StateCreator<InventorySlice, [], [], InventorySlice> = () => ({ inventory: { itemIds: [] } });
+import type { InventoryEntry, PurchaseRecord } from '../../services/commerceService';
+export interface InventorySlice { inventory: { items: InventoryEntry[]; purchases: PurchaseRecord[] }; setInventory: (items: InventoryEntry[], purchases: PurchaseRecord[]) => void; }
+export const createInventorySlice: StateCreator<InventorySlice, [], [], InventorySlice> = (set) => ({ inventory: { items: [], purchases: [] }, setInventory: (items, purchases) => set({ inventory: { items, purchases } }) });

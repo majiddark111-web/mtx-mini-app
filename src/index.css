@@ -48,3 +48,31 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .history-list { border: 1px solid #292929; border-radius: 12px; max-height: 150px; overflow-y: auto; }
 .history-list div { border-bottom: 1px solid #252525; display: flex; flex-direction: column; font-size: .75rem; gap: 4px; padding: 8px 10px; }
 .history-list time { color: #888; }
+.commerce-page { margin: 0 auto; max-width: 760px; }
+.commerce-header { align-items: center; display: flex; justify-content: space-between; padding: 6px 2px 18px; }
+.commerce-header h1 { font-size: 2rem; margin: 0; }
+.commerce-header p { color: #999; margin: 5px 0 0; }
+.commerce-header > strong { color: #ffd21e; }
+.commerce-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.commerce-tools input, .commerce-tools select { background: #151515; border: 1px solid #333; border-radius: 12px; color: #eee; min-width: 130px; padding: 10px; }
+.commerce-tools input { flex: 1; }
+.product-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.product-card, .wallet-card, .purchase-history, .empty-state { background: linear-gradient(145deg, rgba(255,210,30,.08), rgba(255,255,255,.03)); border: 1px solid #302c1b; border-radius: 18px; padding: 16px; }
+.product-card { display: flex; flex-direction: column; gap: 9px; }
+.product-card h2 { font-size: 1.05rem; margin: 4px 0; text-transform: capitalize; }
+.product-card p { color: #aaa; flex: 1; font-size: .84rem; line-height: 1.5; margin: 0; }
+.product-card > strong { color: #ffd21e; }
+.tag { align-self: flex-start; background: #2c2714; border-radius: 999px; color: #ffd21e; font-size: .67rem; padding: 5px 8px; text-transform: uppercase; }
+.tag.limited { background: #382020; color: #ff9292; }
+.empty-state { color: #aaa; text-align: center; }
+.status-message { background: #171717; border-radius: 12px; bottom: 86px; left: 50%; margin: 0; padding: 11px 16px; position: fixed; transform: translateX(-50%); z-index: 10; }
+.purchase-history { margin-top: 16px; }
+.purchase-history h2 { font-size: 1rem; }
+.purchase-history p { border-bottom: 1px solid #292929; color: #aaa; font-size: .8rem; padding: 8px 0; }
+.wallet-card { text-align: center; }
+.wallet-card p { color: #999; overflow-wrap: anywhere; }
+.wallet-dot { background: #555; border-radius: 50%; height: 12px; width: 12px; }
+.wallet-dot.connected { background: #4ee28b; box-shadow: 0 0 12px #4ee28b; }
+.transaction-row { align-items: center; border-bottom: 1px solid #292929; display: grid; gap: 8px; grid-template-columns: 1fr auto auto; padding: 10px 0; }
+.transaction-row small { color: #ffd21e; }
+.payment-confirmed { color: #4ee28b; }.payment-pending { color: #ffd21e; }.payment-failed { color: #ff7575; }.payment-refunded { color: #87b9ff; }

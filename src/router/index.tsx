@@ -4,13 +4,16 @@ import { AppLayout } from '../layouts/AppLayout';
 import { GamePage } from '../pages/GamePage';
 import { HomePage } from '../pages/HomePage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
+import { StorePage } from '../pages/StorePage';
+import { InventoryPage } from '../pages/InventoryPage';
+import { WalletPage } from '../pages/WalletPage';
 
 const placeholder = (title: string, description: string) => <PlaceholderPage title={title} description={description} />;
 export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: '/', element: <HomePage /> }, { path: '/game', element: <GamePage /> },
-  { path: '/store', element: placeholder('Store', 'Items and upgrades will use the approved economy configuration.') },
-  { path: '/inventory', element: placeholder('Inventory', 'Owned boosts, skins and consumables will appear here.') },
-  { path: '/wallet', element: placeholder('Wallet', 'TON wallet connection will be implemented after secure authentication.') },
+  { path: '/store', element: <StorePage /> },
+  { path: '/inventory', element: <InventoryPage /> },
+  { path: '/wallet', element: <WalletPage /> },
   { path: '/missions', element: placeholder('Missions', 'Daily and community missions will be verified by the backend.') },
   { path: '/daily-reward', element: placeholder('Daily Reward', 'Daily streaks and claims will live here.') },
   { path: '/leaderboard', element: placeholder('Leaderboard', 'Global and seasonal rankings will appear here.') },

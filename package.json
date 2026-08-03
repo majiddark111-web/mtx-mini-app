@@ -1,6 +1,6 @@
 {
   "name": "lumos-mini-app",
-  "version": "2.0.0-phase-4",
+  "version": "2.0.0-phase-5",
   "private": true,
   "type": "module",
   "scripts": {
