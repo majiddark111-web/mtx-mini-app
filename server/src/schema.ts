@@ -34,6 +34,31 @@ export const tapBatchSchema: Schema<{ taps: number; durationMs: number; batchId:
   },
 };
 
+export const purchaseSchema: Schema<{ itemId: string; idempotencyKey: string }> = {
+  parse(value) {
+    if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
+    const body = value as Record<string, unknown>;
+    if (Object.keys(body).some((key) => key !== 'itemId' && key !== 'idempotencyKey')) throw new ValidationError('Unknown body field');
+    if (typeof body.itemId !== 'string' || !/^(upgrade:(tap|energy|profit)|skin:aurora|boost:recharge|consumable:energy)$/.test(body.itemId)) throw new ValidationError('Invalid item');
+    if (typeof body.idempotencyKey !== 'string' || !/^[a-zA-Z0-9-]{16,64}$/.test(body.idempotencyKey)) throw new ValidationError('Invalid idempotency key');
+    return { itemId: body.itemId, idempotencyKey: body.idempotencyKey };
+  },
+};
+
+export const paymentConfirmationSchema: Schema<{ provider: 'ton' | 'usdt'; transactionId: string; amount: number; asset: 'TON' | 'USDT' }> = {
+  parse(value) {
+    if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
+    const body = value as Record<string, unknown>;
+    const allowed = new Set(['provider', 'transactionId', 'amount', 'asset']);
+    if (Object.keys(body).some((key) => !allowed.has(key))) throw new ValidationError('Unknown body field');
+    if (body.provider !== 'ton' && body.provider !== 'usdt') throw new ValidationError('Invalid provider');
+    if (typeof body.transactionId !== 'string' || !/^[a-zA-Z0-9:_-]{12,128}$/.test(body.transactionId)) throw new ValidationError('Invalid transaction');
+    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0 || body.amount > 1_000_000) throw new ValidationError('Invalid amount');
+    if (body.asset !== 'TON' && body.asset !== 'USDT') throw new ValidationError('Invalid asset');
+    return { provider: body.provider, transactionId: body.transactionId, amount: body.amount, asset: body.asset };
+  },
+};
+
 export const telegramUserSchema: Schema<AuthenticatedUser> = {
   parse(value) {
     if (!value || typeof value !== 'object') throw new ValidationError('Telegram user is missing');

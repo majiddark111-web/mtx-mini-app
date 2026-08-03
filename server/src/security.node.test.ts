@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { handleRequest, handleRequestWithStorage } from './app.ts';
 import { GameStorage } from './gameStorage.ts';
+import { CommerceStorage } from './commerce.ts';
 import { RateLimiter } from './rateLimiter.ts';
 import { createTelegramHash } from './telegramAuth.ts';
 import type { Env } from './types.ts';
@@ -74,5 +75,39 @@ describe('Telegram authentication security', () => {
     const payload = await response.json() as { flagged: boolean; state: { coins: number } };
     assert.equal(payload.flagged, true);
     assert.equal(payload.state.coins, 0);
+  });
+
+  it('does not charge twice when a coin purchase is replayed', async () => {
+    const login = await handleRequest(authRequest(await signedInitData()), env);
+    const { token } = await login.json() as { token: string };
+    const gameStorage = new GameStorage();
+    const commerce = new CommerceStorage();
+    gameStorage.saveHot({ ...await gameStorage.stateFor('42', Date.now()), coins: 1_000 });
+    const buy = () => handleRequestWithStorage(new Request('https://api.lumos.test/api/store/purchase', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() }, body: JSON.stringify({ itemId: 'upgrade:tap', idempotencyKey: 'purchase-replay-0001' }) }), env, gameStorage, commerce);
+    const first = await buy();
+    const second = await buy();
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.equal(((await second.json()) as { duplicate: boolean }).duplicate, true);
+    const state = await gameStorage.stateFor('42', Date.now());
+    assert.equal(state.coins, 0);
+    assert.equal(state.tapLevel, 1);
+    assert.equal(state.profitPerTap, 2);
+  });
+
+  it('does not double-credit a replayed verified payment', async () => {
+    let verifications = 0;
+    const paymentEnv: Env = { ...env, PAYMENT_VERIFIER: { async verify() { verifications += 1; return { verified: true, creditedCoins: 500, status: 'confirmed' as const }; } } };
+    const login = await handleRequest(authRequest(await signedInitData()), paymentEnv);
+    const { token } = await login.json() as { token: string };
+    const gameStorage = new GameStorage();
+    const commerce = new CommerceStorage();
+    const confirm = () => handleRequestWithStorage(new Request('https://api.lumos.test/api/wallet/payments/confirm', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() }, body: JSON.stringify({ provider: 'ton', transactionId: 'ton:verified:0001', amount: 1, asset: 'TON' }) }), paymentEnv, gameStorage, commerce);
+    const first = await confirm();
+    const second = await confirm();
+    assert.equal(first.status, 200);
+    assert.equal(((await second.json()) as { duplicate: boolean }).duplicate, true);
+    assert.equal(verifications, 1);
+    assert.equal((await gameStorage.stateFor('42', Date.now())).coins, 500);
   });
 });

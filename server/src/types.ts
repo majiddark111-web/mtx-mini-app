@@ -8,6 +8,7 @@ export interface Env {
   REDIS?: RedisCommands;
   POSTGRES?: PostgresQueries;
   ECONOMY_CONFIG?: { get(key: string): Promise<string | null> };
+  PAYMENT_VERIFIER?: { verify(input: { provider: 'ton' | 'usdt'; transactionId: string; amount: number; asset: 'TON' | 'USDT'; userId: string }): Promise<{ verified: boolean; creditedCoins: number; status: 'confirmed' | 'failed' | 'refunded' }> };
 }
 
 export interface AuthenticatedUser {

@@ -12,6 +12,9 @@ export interface ServerGameState {
   maximumEnergy: number;
   profitPerTap: number;
   profitPerHour: number;
+  tapLevel: number;
+  energyLevel: number;
+  profitLevel: number;
   lastEnergyAt: number;
   lastSeenAt: number;
   lastTapAt: number;
@@ -22,7 +25,7 @@ export interface ServerGameState {
 export interface TapBatch { taps: number; durationMs: number; batchId: string; }
 
 export function createGameState(userId: string, now: number): ServerGameState {
-  return { userId, coins: 0, xp: 0, level: 1, rank: 'Bronze', energy: GAME_CONFIG.maximumEnergy, maximumEnergy: GAME_CONFIG.maximumEnergy, profitPerTap: GAME_CONFIG.initialProfitPerTap, profitPerHour: GAME_CONFIG.initialProfitPerHour, lastEnergyAt: now, lastSeenAt: now, lastTapAt: 0, flaggedBatches: 0, version: 1 };
+  return { userId, coins: 0, xp: 0, level: 1, rank: 'Bronze', energy: GAME_CONFIG.maximumEnergy, maximumEnergy: GAME_CONFIG.maximumEnergy, profitPerTap: GAME_CONFIG.initialProfitPerTap, profitPerHour: GAME_CONFIG.initialProfitPerHour, tapLevel: 0, energyLevel: 0, profitLevel: 0, lastEnergyAt: now, lastSeenAt: now, lastTapAt: 0, flaggedBatches: 0, version: 1 };
 }
 
 export function levelForXp(xp: number): number { return Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1; }

@@ -5,11 +5,14 @@ import { RateLimiter } from './rateLimiter.ts';
 import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
 import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
+import { catalogFor, CommerceStorage } from './commerce.ts';
+import { paymentConfirmationSchema, purchaseSchema } from './schema.ts';
 import type { Env } from './types.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
 const defaultGameStorage = new GameStorage();
+const defaultCommerceStorage = new CommerceStorage();
 
 const json = (body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders } });
 const clientIp = (request: Request): string => request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
@@ -28,7 +31,7 @@ function validateEnv(env: Env): void {
 }
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
-  return handleRequestWithStorage(request, env, defaultGameStorage);
+  return handleRequestWithStorage(request, env, defaultGameStorage, defaultCommerceStorage);
 }
 
 async function authenticatedUserId(request: Request, env: Env): Promise<string | null> {
@@ -38,7 +41,7 @@ async function authenticatedUserId(request: Request, env: Env): Promise<string |
   return claims.sub;
 }
 
-export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage): Promise<Response> {
+export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage): Promise<Response> {
   const cors = corsHeaders(request, env);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
@@ -93,9 +96,52 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (result.flagged) return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors);
       return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: false }, 200, cors);
     }
+    if (url.pathname === '/api/store/catalog' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const state = await gameStorage.stateFor(userId, Date.now());
+      return json({ items: catalogFor(state, await loadEconomyConfig(env), commerceStorage.inventory(userId)), coins: state.coins }, 200, cors);
+    }
+    if (url.pathname === '/api/store/purchase' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const body = purchaseSchema.parse(await request.json());
+      const result = await commerceStorage.purchase(userId, body.itemId, body.idempotencyKey, gameStorage, await loadEconomyConfig(env), Date.now());
+      return json(result, 200, cors);
+    }
+    if (url.pathname === '/api/inventory' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      return json({ items: commerceStorage.inventory(userId), purchases: commerceStorage.purchaseHistory(userId) }, 200, cors);
+    }
+    if (url.pathname === '/api/wallet/transactions' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      return json({ transactions: commerceStorage.paymentHistory(userId) }, 200, cors);
+    }
+    if (url.pathname === '/api/wallet/payments/confirm' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      if (!env.PAYMENT_VERIFIER) return json({ error: 'Payment provider unavailable' }, 503, cors);
+      const body = paymentConfirmationSchema.parse(await request.json());
+      const previous = commerceStorage.payment(body.transactionId);
+      if (previous) return json({ transaction: previous, duplicate: true }, 200, cors);
+      const verification = await env.PAYMENT_VERIFIER.verify({ ...body, userId });
+      const outcome = commerceStorage.recordPayment({ ...body, userId, creditedCoins: verification.verified && verification.status === 'confirmed' ? Math.max(0, Math.floor(verification.creditedCoins)) : 0, status: verification.verified ? verification.status : 'failed', createdAt: Date.now() });
+      if (!outcome.duplicate && outcome.record.status === 'confirmed' && outcome.record.creditedCoins > 0) {
+        const state = await gameStorage.stateFor(userId, Date.now());
+        gameStorage.saveHot({ ...state, coins: state.coins + outcome.record.creditedCoins, version: state.version + 1 });
+      }
+      return json({ transaction: outcome.record, duplicate: outcome.duplicate }, 200, cors);
+    }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {
     if (error instanceof ValidationError || error instanceof SyntaxError) return json({ error: 'Invalid request' }, 400, cors);
+    if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') return json({ error: 'Insufficient coins' }, 402, cors);
+    if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'PRICE_CHANGED')) return json({ error: 'Item unavailable' }, 409, cors);
     return json({ error: 'Unauthorized' }, 401, cors);
   }
 }
