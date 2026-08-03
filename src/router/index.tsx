@@ -7,6 +7,11 @@ import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { StorePage } from '../pages/StorePage';
 import { InventoryPage } from '../pages/InventoryPage';
 import { WalletPage } from '../pages/WalletPage';
+import { MissionsPage } from '../pages/MissionsPage';
+import { DailyRewardPage } from '../pages/DailyRewardPage';
+import { LeaderboardPage } from '../pages/LeaderboardPage';
+import { ReferralPage } from '../pages/ReferralPage';
+import { ProfilePage } from '../pages/ProfilePage';
 
 const placeholder = (title: string, description: string) => <PlaceholderPage title={title} description={description} />;
 export const router = createBrowserRouter([{ element: <AppLayout />, children: [
@@ -14,11 +19,11 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: '/store', element: <StorePage /> },
   { path: '/inventory', element: <InventoryPage /> },
   { path: '/wallet', element: <WalletPage /> },
-  { path: '/missions', element: placeholder('Missions', 'Daily and community missions will be verified by the backend.') },
-  { path: '/daily-reward', element: placeholder('Daily Reward', 'Daily streaks and claims will live here.') },
-  { path: '/leaderboard', element: placeholder('Leaderboard', 'Global and seasonal rankings will appear here.') },
-  { path: '/referral', element: placeholder('Referral', 'Invite tracking and verified rewards will appear here.') },
-  { path: '/profile', element: placeholder('Profile', 'Player stats, badges and achievements will appear here.') },
+  { path: '/missions', element: <MissionsPage /> },
+  { path: '/daily-reward', element: <DailyRewardPage /> },
+  { path: '/leaderboard', element: <LeaderboardPage /> },
+  { path: '/referral', element: <ReferralPage /> },
+  { path: '/profile', element: <ProfilePage /> },
   { path: '/settings', element: placeholder('Settings', 'Theme, sound and language controls will appear here.') },
   { path: '/notifications', element: placeholder('Notifications', 'Game announcements and reward updates will appear here.') },
   { path: '/history', element: placeholder('History', 'Reward, upgrade and transaction history will appear here.') },

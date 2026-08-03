@@ -76,3 +76,16 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .transaction-row { align-items: center; border-bottom: 1px solid #292929; display: grid; gap: 8px; grid-template-columns: 1fr auto auto; padding: 10px 0; }
 .transaction-row small { color: #ffd21e; }
 .payment-confirmed { color: #4ee28b; }.payment-pending { color: #ffd21e; }.payment-failed { color: #ff7575; }.payment-refunded { color: #87b9ff; }
+.social-list { display: grid; gap: 12px; }
+.social-card, .daily-card, .referral-card, .profile-card { background: linear-gradient(145deg, rgba(255,210,30,.09), rgba(255,255,255,.03)); border: 1px solid #302c1b; border-radius: 22px; padding: 20px; }
+.social-card { display: grid; gap: 10px; }
+.social-card h2 { font-size: 1rem; margin: 0; }.social-card p { color: #aaa; margin: 0; }.social-card > strong { color: #ffd21e; }
+.daily-card, .referral-card, .profile-card { margin: 8vh auto 0; max-width: 520px; text-align: center; }
+.daily-card h1 { color: #ffd21e; font-size: 3rem; margin: 12px 0; }
+.streak-row { display: grid; gap: 6px; grid-template-columns: repeat(7, 1fr); margin: 22px 0; }
+.streak-row i { background: #222; border-radius: 50%; display: grid; font-style: normal; height: 38px; place-items: center; }.streak-row i.active { background: #ffd21e; color: #111; }
+.leaderboard { background: #121212; border: 1px solid #292929; border-radius: 18px; overflow: hidden; }
+.leaderboard div { align-items: center; border-bottom: 1px solid #252525; display: grid; gap: 10px; grid-template-columns: 42px 1fr auto; padding: 13px; }.leaderboard b, .leaderboard strong { color: #ffd21e; }
+.referral-card { display: flex; flex-direction: column; gap: 14px; }.referral-card > strong { color: #ffd21e; font-size: 1.3rem; overflow-wrap: anywhere; }.referral-card input { background: #181818; border: 1px solid #333; border-radius: 12px; color: #fff; padding: 11px; }
+.referral-stats, .profile-stats { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); }.referral-stats span, .profile-stats span { background: #181818; border-radius: 13px; font-size: 1.2rem; padding: 12px; }.referral-stats small, .profile-stats small { color: #888; display: block; font-size: .7rem; margin-top: 4px; }
+.profile-card img { border: 3px solid #ffd21e; border-radius: 50%; height: 90px; object-fit: cover; width: 90px; }.profile-stats { grid-template-columns: repeat(2, 1fr); margin: 20px 0; }
