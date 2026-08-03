@@ -2,7 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'vendor'] },
+  { ignores: ['dist', 'dist-phase3', '.build-verification', 'node_modules', 'vendor'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {

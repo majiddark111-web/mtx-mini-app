@@ -26,11 +26,12 @@
 
 - Frontend and backend TypeScript checks: passed
 - ESLint: passed
-- Tests: 16 passed, including authenticated API rejection above 15 taps/second
-- Queue load test: 2,000 sync events remained in the hot queue; 100 user states were persisted only during flush
+- Tests: 17 passed, including authenticated API rejection above 15 taps/second
+- Queue load test: 5,000 events produced 5,000 Redis commands while PostgreSQL received zero writes before flush and 100 batched user-state writes after flush
+- Production frontend build: passed (134 modules, 274.20 kB JavaScript / 92.08 kB gzip)
 
 ## Deployment boundary
 
 Development can use the in-memory adapters. Production must provide real `REDIS` and `POSTGRES` bindings implementing the interfaces in `server/src/productionStorage.ts`. A shared Redis-backed hot-state/nonce strategy is still required before horizontally scaling to multiple server instances; process memory alone is not a distributed consistency mechanism.
 
-The production bundle could not be regenerated in this workspace because the interrupted package installation left an esbuild host/binary version mismatch. Type checks, lint, and all tests ran successfully. A clean `pnpm install --frozen-lockfile` restores the matching binary before `pnpm build`.
+The installed Vite 6 tree in this workspace still contains an esbuild host/binary mismatch from the interrupted package installation. The same source was therefore verified with the intact Vite 4 toolchain already present in the workspace and produced `dist-phase3`. A clean `pnpm install --frozen-lockfile` is still required on a deployment machine to restore the declared Vite 6 toolchain.
