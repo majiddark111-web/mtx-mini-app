@@ -1,8 +1,12 @@
+import type { PostgresQueries, RedisCommands } from './productionStorage.ts';
+
 export interface Env {
   TELEGRAM_BOT_TOKEN: string;
   JWT_SECRET: string;
   APP_ORIGIN: string;
   AUTH_MAX_AGE_SECONDS?: string;
+  REDIS?: RedisCommands;
+  POSTGRES?: PostgresQueries;
 }
 
 export interface AuthenticatedUser {

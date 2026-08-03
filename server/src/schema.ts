@@ -21,6 +21,19 @@ export const emptyQuerySchema: Schema<Record<string, never>> = {
   },
 };
 
+export const tapBatchSchema: Schema<{ taps: number; durationMs: number; batchId: string }> = {
+  parse(value) {
+    if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
+    const body = value as Record<string, unknown>;
+    const allowed = new Set(['taps', 'durationMs', 'batchId']);
+    if (Object.keys(body).some((key) => !allowed.has(key))) throw new ValidationError('Unknown body field');
+    if (!Number.isSafeInteger(body.taps) || (body.taps as number) < 1 || (body.taps as number) > 50) throw new ValidationError('Invalid tap count');
+    if (!Number.isSafeInteger(body.durationMs) || (body.durationMs as number) < 100 || (body.durationMs as number) > 10_000) throw new ValidationError('Invalid duration');
+    if (typeof body.batchId !== 'string' || !/^[a-zA-Z0-9-]{16,64}$/.test(body.batchId)) throw new ValidationError('Invalid batch id');
+    return { taps: body.taps as number, durationMs: body.durationMs as number, batchId: body.batchId };
+  },
+};
+
 export const telegramUserSchema: Schema<AuthenticatedUser> = {
   parse(value) {
     if (!value || typeof value !== 'object') throw new ValidationError('Telegram user is missing');

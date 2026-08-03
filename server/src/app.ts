@@ -1,11 +1,14 @@
 import { issueJwt, verifyJwt } from './jwt.ts';
+import { applyOfflineProfit, applyTapBatch } from './gameEngine.ts';
+import { GameStorage } from './gameStorage.ts';
 import { RateLimiter } from './rateLimiter.ts';
-import { authRequestSchema, emptyQuerySchema, ValidationError } from './schema.ts';
+import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
 import { validateTelegramInitData } from './telegramAuth.ts';
 import type { Env } from './types.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
+const defaultGameStorage = new GameStorage();
 
 const json = (body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders } });
 const clientIp = (request: Request): string => request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
@@ -24,6 +27,17 @@ function validateEnv(env: Env): void {
 }
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
+  return handleRequestWithStorage(request, env, defaultGameStorage);
+}
+
+async function authenticatedUserId(request: Request, env: Env): Promise<string | null> {
+  const authorization = request.headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) return null;
+  const claims = await verifyJwt(authorization.slice(7), env.JWT_SECRET);
+  return claims.sub;
+}
+
+export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage): Promise<Response> {
   const cors = corsHeaders(request, env);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
@@ -46,6 +60,31 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       const claims = await verifyJwt(authorization.slice(7), env.JWT_SECRET);
       if (!userLimiter.consume(`user:${claims.sub}`)) return json({ error: 'Too many requests' }, 429, cors);
       return json({ user: claims.user }, 200, cors);
+    }
+    if (url.pathname === '/api/game/state' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      if (!userLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const current = await gameStorage.stateFor(userId, Date.now());
+      const result = applyOfflineProfit(current, Date.now());
+      gameStorage.saveHot(result.state);
+      return json({ state: result.state, offlineProfit: result.offlineProfit }, 200, cors);
+    }
+    if (url.pathname === '/api/game/taps' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      if (!userLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const batch = tapBatchSchema.parse(await request.json());
+      const now = Date.now();
+      const current = await gameStorage.stateFor(userId, now);
+      if (gameStorage.isProcessed(userId, batch.batchId)) return json({ state: current, acceptedTaps: 0, duplicate: true }, 200, cors);
+      const result = applyTapBatch(current, batch, now);
+      gameStorage.markProcessed(userId, batch.batchId, now);
+      gameStorage.saveHot(result.state);
+      await gameStorage.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
+      if (result.flagged) return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors);
+      return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: false }, 200, cors);
     }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {

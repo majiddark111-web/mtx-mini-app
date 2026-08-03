@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { handleRequest } from './app.ts';
+import { handleRequest, handleRequestWithStorage } from './app.ts';
+import { GameStorage } from './gameStorage.ts';
 import { RateLimiter } from './rateLimiter.ts';
 import { createTelegramHash } from './telegramAuth.ts';
 import type { Env } from './types.ts';
@@ -58,5 +59,20 @@ describe('Telegram authentication security', () => {
     assert.equal(limiter.consume('user:42', 1_100), true);
     assert.equal(limiter.consume('user:42', 1_200), false);
     assert.equal(limiter.consume('user:42', 2_001), true);
+  });
+
+  it('rejects an authenticated batch above 15 taps per second', async () => {
+    const login = await handleRequest(authRequest(await signedInitData()), env);
+    const { token } = await login.json() as { token: string };
+    const request = new Request('https://api.lumos.test/api/game/taps', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() },
+      body: JSON.stringify({ taps: 31, durationMs: 2_000, batchId: 'batch-security-0001' }),
+    });
+    const response = await handleRequestWithStorage(request, env, new GameStorage());
+    assert.equal(response.status, 422);
+    const payload = await response.json() as { flagged: boolean; state: { coins: number } };
+    assert.equal(payload.flagged, true);
+    assert.equal(payload.state.coins, 0);
   });
 });
