@@ -33,6 +33,7 @@ export class CommerceStorage {
   inventory(userId: string): InventoryEntry[] { return structuredClone(this.inventories.get(userId) ?? []); }
   purchaseHistory(userId: string): PurchaseRecord[] { return structuredClone([...this.purchases.values()].filter((record) => record.userId === userId)); }
   paymentHistory(userId: string): PaymentRecord[] { return structuredClone([...this.payments.values()].filter((record) => record.userId === userId)); }
+  allPayments(): PaymentRecord[] { return structuredClone([...this.payments.values()]); }
   payment(transactionId: string): PaymentRecord | undefined { const record = this.payments.get(transactionId); return record && structuredClone(record); }
 
   async purchase(userId: string, itemId: string, idempotencyKey: string, gameStorage: GameStorage, economy: EconomyConfig, now: number): Promise<{ state: ServerGameState; record: PurchaseRecord; duplicate: boolean }> {
@@ -70,4 +71,3 @@ export class CommerceStorage {
     return { record: structuredClone(record), duplicate: false };
   }
 }
-

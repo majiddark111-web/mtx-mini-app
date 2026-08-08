@@ -110,4 +110,18 @@ describe('Telegram authentication security', () => {
     assert.equal(verifications, 1);
     assert.equal((await gameStorage.stateFor('42', Date.now())).coins, 500);
   });
+
+  it('rejects a player JWT from every admin endpoint', async () => {
+    const login = await handleRequest(authRequest(await signedInitData()), env); const { token } = await login.json() as { token: string };
+    const response = await handleRequest(new Request('https://api.lumos.test/api/admin/dashboard', { headers: { authorization: `Bearer ${token}`, origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() } }), { ...env, ADMIN_JWT_SECRET: 'separate-admin-secret-longer-than-32-characters' });
+    assert.equal(response.status, 403);
+  });
+
+  it('uses separate admin authentication and enforces bans server-side', async () => {
+    const adminEnv: Env = { ...env, ADMIN_JWT_SECRET: 'separate-admin-secret-longer-than-32-characters', ADMIN_AUTH: { async verify(input) { return input.username === 'operator' && input.password === 'correct-horse-battery' && input.otp === '123456' ? { id: 'admin-1' } : null; } } };
+    const adminLogin = await handleRequest(new Request('https://api.lumos.test/api/admin/auth', { method: 'POST', headers: { 'content-type': 'application/json', origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() }, body: JSON.stringify({ username: 'operator', password: 'correct-horse-battery', otp: '123456' }) }), adminEnv); assert.equal(adminLogin.status, 200); const { token: adminToken } = await adminLogin.json() as { token: string };
+    const ban = await handleRequest(new Request('https://api.lumos.test/api/admin/users/ban', { method: 'POST', headers: { authorization: `Bearer ${adminToken}`, 'content-type': 'application/json', origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() }, body: JSON.stringify({ userId: '42', banned: true }) }), adminEnv); assert.equal(ban.status, 200);
+    const playerLogin = await handleRequest(authRequest(await signedInitData()), adminEnv); const { token: playerToken } = await playerLogin.json() as { token: string };
+    const session = await handleRequest(new Request('https://api.lumos.test/api/session', { headers: { authorization: `Bearer ${playerToken}`, origin: env.APP_ORIGIN, 'cf-connecting-ip': crypto.randomUUID() } }), adminEnv); assert.equal(session.status, 403);
+  });
 });

@@ -46,4 +46,5 @@ export class GameStorage {
     this.processed.set(`${userId}:${batchId}`, now);
     if (this.processed.size > 10_000) for (const [key, timestamp] of this.processed) if (now - timestamp > 600_000) this.processed.delete(key);
   }
+  hotStateSnapshot(): ServerGameState[] { return structuredClone([...this.hotStates.values()]); }
 }

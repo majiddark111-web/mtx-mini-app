@@ -12,6 +12,8 @@ export interface Env {
   PAYMENT_VERIFIER?: { verify(input: { provider: 'ton' | 'usdt'; transactionId: string; amount: number; asset: 'TON' | 'USDT'; userId: string }): Promise<{ verified: boolean; creditedCoins: number; status: 'confirmed' | 'failed' | 'refunded' }> };
   LEADERBOARD_PUBSUB?: LeaderboardPubSub;
   LEADERBOARD_WEBSOCKET?: { upgrade(request: Request, gateway: LeaderboardGateway): Promise<Response> };
+  ADMIN_JWT_SECRET?: string;
+  ADMIN_AUTH?: { verify(input: { username: string; password: string; otp: string }): Promise<{ id: string } | null> };
 }
 
 export interface AuthenticatedUser {

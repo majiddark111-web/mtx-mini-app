@@ -11,6 +11,9 @@ import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
 import { challengeClaimSchema } from './schema.ts';
 import { SocialStorage } from './social.ts';
 import { LeaderboardGateway } from './leaderboardGateway.ts';
+import { AdminStorage } from './admin.ts';
+import { issueAdminJwt, verifyAdminJwt } from './adminAuth.ts';
+import { adminBanSchema, adminEventSchema, adminLoginSchema, adminNotificationSchema } from './schema.ts';
 import type { Env } from './types.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
@@ -18,6 +21,7 @@ const userLimiter = new RateLimiter(120, 60_000);
 const defaultGameStorage = new GameStorage();
 const defaultCommerceStorage = new CommerceStorage();
 const defaultSocialStorage = new SocialStorage();
+const defaultAdminStorage = new AdminStorage();
 
 const json = (body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders } });
 const clientIp = (request: Request): string => request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
@@ -36,7 +40,7 @@ function validateEnv(env: Env): void {
 }
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
-  return handleRequestWithStorage(request, env, defaultGameStorage, defaultCommerceStorage, defaultSocialStorage);
+  return handleRequestWithStorage(request, env, defaultGameStorage, defaultCommerceStorage, defaultSocialStorage, defaultAdminStorage);
 }
 
 async function authenticatedUserId(request: Request, env: Env): Promise<string | null> {
@@ -46,7 +50,7 @@ async function authenticatedUserId(request: Request, env: Env): Promise<string |
   return claims.sub;
 }
 
-export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage): Promise<Response> {
+export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage, adminStorage: AdminStorage = defaultAdminStorage): Promise<Response> {
   const cors = corsHeaders(request, env);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
@@ -55,6 +59,28 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
   if (!ipLimiter.consume(`ip:${clientIp(request)}`)) return json({ error: 'Too many requests' }, 429, cors);
   const url = new URL(request.url);
   try {
+    if (url.pathname === '/api/admin/auth' && request.method === 'POST') {
+      if (!env.ADMIN_AUTH || !env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) return json({ error: 'Admin authentication unavailable' }, 503, cors);
+      const body = adminLoginSchema.parse(await request.json()); const admin = await env.ADMIN_AUTH.verify(body); if (!admin) return json({ error: 'Unauthorized' }, 401, cors); return json({ token: await issueAdminJwt(admin.id, env.ADMIN_JWT_SECRET), admin: { id: admin.id } }, 200, cors);
+    }
+    if (url.pathname.startsWith('/api/admin/')) {
+      if (!env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) return json({ error: 'Admin authentication unavailable' }, 503, cors);
+      const authorization = request.headers.get('authorization'); if (!authorization?.startsWith('Bearer ')) return json({ error: 'Forbidden' }, 403, cors); let admin; try { admin = await verifyAdminJwt(authorization.slice(7), env.ADMIN_JWT_SECRET); } catch { return json({ error: 'Forbidden' }, 403, cors); }
+      const users = gameStorage.hotStateSnapshot(); const payments = commerceStorage.allPayments(); const snapshot = adminStorage.snapshot();
+      if (url.pathname === '/api/admin/dashboard' && request.method === 'GET') return json({ stats: { users: users.length, banned: snapshot.banned.length, payments: payments.length, confirmedRevenue: payments.filter((item) => item.status === 'confirmed').reduce((sum, item) => sum + item.amount, 0), totalCoins: users.reduce((sum, item) => sum + item.coins, 0) }, recentLogs: snapshot.logs.slice(0, 20) }, 200, cors);
+      if (url.pathname === '/api/admin/users' && request.method === 'GET') return json({ users: users.map((user) => ({ ...user, banned: adminStorage.isBanned(user.userId) })) }, 200, cors);
+      if (url.pathname === '/api/admin/payments' && request.method === 'GET') return json({ payments }, 200, cors);
+      if (url.pathname === '/api/admin/items' && request.method === 'GET') { const state = users[0] ?? await gameStorage.stateFor('admin-preview', Date.now()); return json({ items: catalogFor(state, await loadEconomyConfig(env), []) }, 200, cors); }
+      if (url.pathname === '/api/admin/logs' && request.method === 'GET') return json({ logs: snapshot.logs }, 200, cors);
+      if (url.pathname === '/api/admin/notifications' && request.method === 'GET') return json({ notifications: snapshot.notifications }, 200, cors);
+      if (url.pathname === '/api/admin/events' && request.method === 'GET') return json({ events: snapshot.events }, 200, cors);
+      if (url.pathname === '/api/admin/users/ban' && request.method === 'POST') { const body = adminBanSchema.parse(await request.json()); if (body.banned) adminStorage.ban(admin.sub, body.userId); else adminStorage.unban(admin.sub, body.userId); return json({ userId: body.userId, banned: body.banned }, 200, cors); }
+      if (url.pathname === '/api/admin/notifications' && request.method === 'POST') { const body = adminNotificationSchema.parse(await request.json()); return json({ notification: adminStorage.notify(admin.sub, body.title, body.message, Date.now()) }, 201, cors); }
+      if (url.pathname === '/api/admin/events' && request.method === 'POST') { const body = adminEventSchema.parse(await request.json()); return json({ event: adminStorage.createEvent(admin.sub, body.title, body.startsAt, body.endsAt, body.multiplier) }, 201, cors); }
+      return json({ error: 'Not found' }, 404, cors);
+    }
+    const playerAuthorization = request.headers.get('authorization');
+    if (playerAuthorization?.startsWith('Bearer ')) { try { const player = await verifyJwt(playerAuthorization.slice(7), env.JWT_SECRET); if (adminStorage.isBanned(player.sub)) return json({ error: 'Account suspended' }, 403, cors); } catch { /* Endpoint-specific authentication returns the response. */ } }
     if (url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       if (!env.LEADERBOARD_WEBSOCKET || !env.LEADERBOARD_PUBSUB) return json({ error: 'Realtime unavailable' }, 503, cors);
       return env.LEADERBOARD_WEBSOCKET.upgrade(request, new LeaderboardGateway(socialStorage.leaderboardRepository(), env.LEADERBOARD_PUBSUB, env.JWT_SECRET));

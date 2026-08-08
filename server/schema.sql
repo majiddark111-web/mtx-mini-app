@@ -40,3 +40,7 @@ CREATE TABLE IF NOT EXISTS lumos_daily_claims (user_id TEXT PRIMARY KEY, claim_d
 CREATE TABLE IF NOT EXISTS lumos_mission_claims (user_id TEXT NOT NULL, mission_id TEXT NOT NULL, period_key TEXT NOT NULL, claimed_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (user_id, mission_id, period_key));
 CREATE TABLE IF NOT EXISTS lumos_referrals (referee_id TEXT PRIMARY KEY, referrer_id TEXT NOT NULL, device_hash TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL, CHECK (referee_id <> referrer_id));
 CREATE TABLE IF NOT EXISTS lumos_challenge_claims (user_id TEXT NOT NULL, challenge_type TEXT NOT NULL CHECK (challenge_type IN ('combo', 'cipher')), challenge_day DATE NOT NULL, reward BIGINT NOT NULL CHECK (reward > 0), claimed_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (user_id, challenge_type, challenge_day));
+CREATE TABLE IF NOT EXISTS lumos_admin_bans (user_id TEXT PRIMARY KEY, admin_id TEXT NOT NULL, reason TEXT, created_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE IF NOT EXISTS lumos_admin_logs (id UUID PRIMARY KEY, admin_id TEXT NOT NULL, action TEXT NOT NULL, target TEXT, created_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE IF NOT EXISTS lumos_notifications (id UUID PRIMARY KEY, title TEXT NOT NULL, message TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE IF NOT EXISTS lumos_events (id UUID PRIMARY KEY, title TEXT NOT NULL, starts_at TIMESTAMPTZ NOT NULL, ends_at TIMESTAMPTZ NOT NULL, multiplier NUMERIC NOT NULL CHECK (multiplier BETWEEN 1 AND 5));
