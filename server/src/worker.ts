@@ -4,6 +4,7 @@ import type { GameStorage } from './gameStorage.ts';
 import type { Env } from './types.ts';
 import { SocialStorage } from './social.ts';
 import { PostgresSocialPersistence } from './socialPersistence.ts';
+import { RedisReplayProtection } from './requestSecurity.ts';
 
 let storage: GameStorage | undefined;
 let requestsSinceFlush = 0;
@@ -14,7 +15,7 @@ export default {
     if (env.REDIS && env.POSTGRES) {
       storage ??= productionGameStorage(env.REDIS, env.POSTGRES);
       social ??= new SocialStorage(new RedisLeaderboardRepository(env.REDIS), new PostgresSocialPersistence(env.POSTGRES));
-      const response = await handleRequestWithStorage(request, env, storage, undefined, social);
+      const response = await handleRequestWithStorage(request, env, storage, undefined, social, undefined, new RedisReplayProtection(env.REDIS));
       requestsSinceFlush += 1;
       if (requestsSinceFlush >= 100) { requestsSinceFlush = 0; await storage.flushDirty(); }
       return response;

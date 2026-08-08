@@ -15,6 +15,7 @@ import { AdminStorage } from './admin.ts';
 import { issueAdminJwt, verifyAdminJwt } from './adminAuth.ts';
 import { adminBanSchema, adminEventSchema, adminLoginSchema, adminNotificationSchema } from './schema.ts';
 import type { Env } from './types.ts';
+import { AntiCheatMonitor, deriveSessionKey, MemoryReplayProtection, type ReplayProtection, validateSignedRequest } from './requestSecurity.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
@@ -22,13 +23,15 @@ const defaultGameStorage = new GameStorage();
 const defaultCommerceStorage = new CommerceStorage();
 const defaultSocialStorage = new SocialStorage();
 const defaultAdminStorage = new AdminStorage();
+const defaultReplayProtection = new MemoryReplayProtection();
+const defaultAntiCheatMonitor = new AntiCheatMonitor();
 
 const json = (body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders } });
 const clientIp = (request: Request): string => request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
 
 function corsHeaders(request: Request, env: Env): HeadersInit {
   const origin = request.headers.get('origin');
-  return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
+  return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type, x-lumos-timestamp, x-lumos-nonce, x-lumos-signature', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
 }
 
 function validateEnv(env: Env): void {
@@ -50,7 +53,7 @@ async function authenticatedUserId(request: Request, env: Env): Promise<string |
   return claims.sub;
 }
 
-export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage, adminStorage: AdminStorage = defaultAdminStorage): Promise<Response> {
+export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage, adminStorage: AdminStorage = defaultAdminStorage, replayProtection: ReplayProtection = defaultReplayProtection, antiCheatMonitor: AntiCheatMonitor = defaultAntiCheatMonitor): Promise<Response> {
   const cors = corsHeaders(request, env);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
@@ -72,6 +75,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (url.pathname === '/api/admin/payments' && request.method === 'GET') return json({ payments }, 200, cors);
       if (url.pathname === '/api/admin/items' && request.method === 'GET') { const state = users[0] ?? await gameStorage.stateFor('admin-preview', Date.now()); return json({ items: catalogFor(state, await loadEconomyConfig(env), []) }, 200, cors); }
       if (url.pathname === '/api/admin/logs' && request.method === 'GET') return json({ logs: snapshot.logs }, 200, cors);
+      if (url.pathname === '/api/admin/anomalies' && request.method === 'GET') return json({ anomalies: antiCheatMonitor.snapshot() }, 200, cors);
       if (url.pathname === '/api/admin/notifications' && request.method === 'GET') return json({ notifications: snapshot.notifications }, 200, cors);
       if (url.pathname === '/api/admin/events' && request.method === 'GET') return json({ events: snapshot.events }, 200, cors);
       if (url.pathname === '/api/admin/users/ban' && request.method === 'POST') { const body = adminBanSchema.parse(await request.json()); if (body.banned) adminStorage.ban(admin.sub, body.userId); else adminStorage.unban(admin.sub, body.userId); return json({ userId: body.userId, banned: body.banned }, 200, cors); }
@@ -80,7 +84,16 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       return json({ error: 'Not found' }, 404, cors);
     }
     const playerAuthorization = request.headers.get('authorization');
-    if (playerAuthorization?.startsWith('Bearer ')) { try { const player = await verifyJwt(playerAuthorization.slice(7), env.JWT_SECRET); if (adminStorage.isBanned(player.sub)) return json({ error: 'Account suspended' }, 403, cors); } catch { /* Endpoint-specific authentication returns the response. */ } }
+    if (playerAuthorization?.startsWith('Bearer ')) {
+      try {
+        const player = await verifyJwt(playerAuthorization.slice(7), env.JWT_SECRET);
+        if (adminStorage.isBanned(player.sub)) return json({ error: 'Account suspended' }, 403, cors);
+        if (!(url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket')) {
+          const failure = await validateSignedRequest(request, player, env.JWT_SECRET, replayProtection);
+          if (failure) { antiCheatMonitor.flag(player.sub, failure, { path: url.pathname }); return json({ error: 'Request security check failed', reason: failure }, failure === 'replayed_request' ? 409 : 401, cors); }
+        }
+      } catch { return json({ error: 'Unauthorized' }, 401, cors); }
+    }
     if (url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       if (!env.LEADERBOARD_WEBSOCKET || !env.LEADERBOARD_PUBSUB) return json({ error: 'Realtime unavailable' }, 503, cors);
       return env.LEADERBOARD_WEBSOCKET.upgrade(request, new LeaderboardGateway(socialStorage.leaderboardRepository(), env.LEADERBOARD_PUBSUB, env.JWT_SECRET));
@@ -89,8 +102,10 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const body = authRequestSchema.parse(await request.json());
       const maximumAge = Number(env.AUTH_MAX_AGE_SECONDS ?? '300');
       const user = await validateTelegramInitData(body.initData, env.TELEGRAM_BOT_TOKEN, maximumAge);
-      const token = await issueJwt(user, env.JWT_SECRET);
-      return json({ token, user }, 200, cors);
+      const nowSeconds = Math.floor(Date.now() / 1_000);
+      const token = await issueJwt(user, env.JWT_SECRET, 900, nowSeconds);
+      const sessionKey = await deriveSessionKey({ sub: user.id, iat: nowSeconds }, env.JWT_SECRET);
+      return json({ token, sessionKey, user }, 200, cors);
     }
     if (url.pathname === '/api/session' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
@@ -129,7 +144,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       gameStorage.markProcessed(userId, batch.batchId, now);
       gameStorage.saveHot(result.state);
       await gameStorage.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
-      if (result.flagged) return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors);
+      if (result.flagged) { antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
       return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: false }, 200, cors);
     }
     if (url.pathname === '/api/store/catalog' && request.method === 'GET') {
