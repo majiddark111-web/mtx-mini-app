@@ -8,6 +8,7 @@ import { loadEconomyConfig } from './economyConfigProvider.ts';
 import { catalogFor, CommerceStorage } from './commerce.ts';
 import { paymentConfirmationSchema, purchaseSchema } from './schema.ts';
 import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
+import { challengeClaimSchema } from './schema.ts';
 import { SocialStorage } from './social.ts';
 import type { Env } from './types.ts';
 
@@ -155,6 +156,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     if (url.pathname === '/api/daily/claim' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(await socialStorage.claimDaily(userId, gameStorage, Date.now()), 200, cors);
     }
+    if (url.pathname === '/api/daily/challenges' && request.method === 'GET') { const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.challenges(userId, Date.now()), 200, cors); }
+    if (url.pathname === '/api/daily/challenges/claim' && request.method === 'POST') { const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const body = challengeClaimSchema.parse(await request.json()); return json(await socialStorage.claimChallenge(userId, body.type, body.answer, gameStorage, Date.now()), 200, cors); }
     if (url.pathname === '/api/referral' && request.method === 'GET') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.referralStatus(userId), 200, cors);
     }
@@ -172,7 +175,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     if (error instanceof ValidationError || error instanceof SyntaxError) return json({ error: 'Invalid request' }, 400, cors);
     if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') return json({ error: 'Insufficient coins' }, 402, cors);
     if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'PRICE_CHANGED')) return json({ error: 'Item unavailable' }, 409, cors);
-    if (error instanceof Error && (error.message.startsWith('MISSION_') || error.message.startsWith('DAILY_') || error.message.startsWith('REFERRAL_'))) return json({ error: error.message }, 409, cors);
+    if (error instanceof Error && (error.message.startsWith('MISSION_') || error.message.startsWith('DAILY_') || error.message.startsWith('REFERRAL_') || error.message.startsWith('CHALLENGE_'))) return json({ error: error.message }, 409, cors);
     return json({ error: 'Unauthorized' }, 401, cors);
   }
 }

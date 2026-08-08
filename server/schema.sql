@@ -39,3 +39,4 @@ CREATE TABLE IF NOT EXISTS lumos_payments (
 CREATE TABLE IF NOT EXISTS lumos_daily_claims (user_id TEXT PRIMARY KEY, claim_day DATE NOT NULL, streak INTEGER NOT NULL CHECK (streak BETWEEN 1 AND 7));
 CREATE TABLE IF NOT EXISTS lumos_mission_claims (user_id TEXT NOT NULL, mission_id TEXT NOT NULL, period_key TEXT NOT NULL, claimed_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (user_id, mission_id, period_key));
 CREATE TABLE IF NOT EXISTS lumos_referrals (referee_id TEXT PRIMARY KEY, referrer_id TEXT NOT NULL, device_hash TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL, CHECK (referee_id <> referrer_id));
+CREATE TABLE IF NOT EXISTS lumos_challenge_claims (user_id TEXT NOT NULL, challenge_type TEXT NOT NULL CHECK (challenge_type IN ('combo', 'cipher')), challenge_day DATE NOT NULL, reward BIGINT NOT NULL CHECK (reward > 0), claimed_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (user_id, challenge_type, challenge_day));

@@ -18,6 +18,7 @@ export class SocialStorage {
   private missionClaims = new Set<string>();
   private referrals = new Map<string, ReferralRecord>();
   private referralDevices = new Set<string>();
+  private challengeClaims = new Set<string>();
   private readonly leaderboard: LeaderboardRepository;
   constructor(leaderboard: LeaderboardRepository = new MemoryLeaderboardRepository()) { this.leaderboard = leaderboard; }
 
@@ -53,6 +54,14 @@ export class SocialStorage {
   }
 
   referralStatus(userId: string): { code: string; invited: number; earned: number } { const invited = [...this.referrals.values()].filter((record) => record.referrerId === userId).length; return { code: `LUMOS-${userId}`, invited, earned: invited * 500 }; }
+
+  challenges(userId: string, now: number): { combo: { slots: number; reward: number; claimed: boolean }; cipher: { hint: string; length: number; reward: number; claimed: boolean } } { const day = dayKey(now); return { combo: { slots: 3, reward: 750, claimed: this.challengeClaims.has(`${userId}:combo:${day}`) }, cipher: { hint: 'The name that lights the game', length: 5, reward: 500, claimed: this.challengeClaims.has(`${userId}:cipher:${day}`) } }; }
+
+  async claimChallenge(userId: string, type: 'combo' | 'cipher', answer: string[], game: GameStorage, now: number): Promise<{ reward: number }> {
+    const key = `${userId}:${type}:${dayKey(now)}`; if (this.challengeClaims.has(key)) throw new Error('CHALLENGE_ALREADY_CLAIMED');
+    const valid = type === 'cipher' ? answer.length === 1 && answer[0].trim().toUpperCase() === 'LUMOS' : answer.join('|') === 'upgrade:tap|skin:aurora|boost:recharge'; if (!valid) throw new Error('CHALLENGE_INCORRECT');
+    const reward = type === 'combo' ? 750 : 500; this.challengeClaims.add(key); const state = await game.stateFor(userId, now); const updated = { ...state, coins: state.coins + reward, version: state.version + 1 }; game.saveHot(updated); await this.recordScore(userId, userId, updated.coins); return { reward };
+  }
 
   async acceptReferral(refereeId: string, code: string, deviceHash: string, game: GameStorage, now: number): Promise<void> {
     const referrerId = code.startsWith('LUMOS-') ? code.slice(6) : ''; if (!referrerId || referrerId === refereeId) throw new Error('REFERRAL_SELF');

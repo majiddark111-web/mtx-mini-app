@@ -37,4 +37,13 @@ describe('phase 6 social systems', () => {
     const redis = new FakeRedis(); const repository = new RedisLeaderboardRepository(redis); await repository.record('1', 'player-1', 500); const leaders = await repository.leaders(2);
     assert.equal(leaders[0].coins, 900); assert.equal(leaders[0].rank, 1); assert.deepEqual(redis.commands.map((parts) => parts[0]), ['ZADD', 'HSET', 'ZREVRANGE', 'HGET', 'HGET']);
   });
+
+  it('validates combo and cipher on the server and prevents repeat claims', async () => {
+    const social = new SocialStorage(); const game = new GameStorage(); const now = Date.UTC(2026, 0, 1);
+    await assert.rejects(() => social.claimChallenge('1', 'cipher', ['WRONG'], game, now), /CHALLENGE_INCORRECT/);
+    assert.equal((await social.claimChallenge('1', 'cipher', ['LUMOS'], game, now)).reward, 500);
+    assert.equal((await social.claimChallenge('1', 'combo', ['upgrade:tap', 'skin:aurora', 'boost:recharge'], game, now)).reward, 750);
+    await assert.rejects(() => social.claimChallenge('1', 'combo', ['upgrade:tap', 'skin:aurora', 'boost:recharge'], game, now), /CHALLENGE_ALREADY_CLAIMED/);
+    assert.equal((await game.stateFor('1', now)).coins, 1_250);
+  });
 });
