@@ -8,5 +8,5 @@ import { BottomNavigation } from '../components/navigation/BottomNavigation';
 export function AppLayout() {
   useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync();
   const location = useLocation();
-  return <div className="app-shell"><Outlet />{location.pathname !== '/game' && <BottomNavigation />}</div>;
+  return <div className="app-shell"><Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <BottomNavigation />}</div>;
 }

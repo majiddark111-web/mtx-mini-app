@@ -12,6 +12,8 @@ import { DailyRewardPage } from '../pages/DailyRewardPage';
 import { LeaderboardPage } from '../pages/LeaderboardPage';
 import { ReferralPage } from '../pages/ReferralPage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { AdminLoginPage } from '../pages/AdminLoginPage';
+import { AdminPage } from '../pages/AdminPage';
 
 const placeholder = (title: string, description: string) => <PlaceholderPage title={title} description={description} />;
 export const router = createBrowserRouter([{ element: <AppLayout />, children: [
@@ -27,6 +29,7 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: '/settings', element: placeholder('Settings', 'Theme, sound and language controls will appear here.') },
   { path: '/notifications', element: placeholder('Notifications', 'Game announcements and reward updates will appear here.') },
   { path: '/history', element: placeholder('History', 'Reward, upgrade and transaction history will appear here.') },
-  { element: <ProtectedAdminRoute />, children: [{ path: '/admin', element: placeholder('Admin', 'This hidden route requires the admin role.') }] },
+  { path: '/admin/login', element: <AdminLoginPage /> },
+  { element: <ProtectedAdminRoute />, children: [{ path: '/admin', element: <AdminPage /> }] },
   { path: '*', element: placeholder('Not Found', 'This Lumos page does not exist.') },
 ]}]);
