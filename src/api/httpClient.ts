@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 
 let authToken = '';
 export const setApiAuthToken = (token: string): void => { authToken = token; };
+export const getApiAuthToken = (): string => authToken;
 
 export const httpClient = axios.create({ baseURL: import.meta.env.VITE_API_BASE || '', timeout: 10_000 });
 
