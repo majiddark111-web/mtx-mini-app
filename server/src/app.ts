@@ -10,6 +10,7 @@ import { paymentConfirmationSchema, purchaseSchema } from './schema.ts';
 import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
 import { challengeClaimSchema } from './schema.ts';
 import { SocialStorage } from './social.ts';
+import { LeaderboardGateway } from './leaderboardGateway.ts';
 import type { Env } from './types.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
@@ -54,6 +55,10 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
   if (!ipLimiter.consume(`ip:${clientIp(request)}`)) return json({ error: 'Too many requests' }, 429, cors);
   const url = new URL(request.url);
   try {
+    if (url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
+      if (!env.LEADERBOARD_WEBSOCKET || !env.LEADERBOARD_PUBSUB) return json({ error: 'Realtime unavailable' }, 503, cors);
+      return env.LEADERBOARD_WEBSOCKET.upgrade(request, new LeaderboardGateway(socialStorage.leaderboardRepository(), env.LEADERBOARD_PUBSUB, env.JWT_SECRET));
+    }
     if (url.pathname === '/api/auth/telegram' && request.method === 'POST') {
       const body = authRequestSchema.parse(await request.json());
       const maximumAge = Number(env.AUTH_MAX_AGE_SECONDS ?? '300');
@@ -144,22 +149,22 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     }
     if (url.pathname === '/api/missions' && request.method === 'GET') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      return json({ missions: socialStorage.missions(userId, await gameStorage.stateFor(userId, Date.now()), Date.now()) }, 200, cors);
+      return json({ missions: await socialStorage.missions(userId, await gameStorage.stateFor(userId, Date.now()), Date.now()) }, 200, cors);
     }
     if (url.pathname === '/api/missions/claim' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       const body = missionClaimSchema.parse(await request.json()); return json(await socialStorage.claimMission(userId, body.missionId, gameStorage, Date.now()), 200, cors);
     }
     if (url.pathname === '/api/daily' && request.method === 'GET') {
-      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.dailyStatus(userId, Date.now()), 200, cors);
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(await socialStorage.dailyStatus(userId, Date.now()), 200, cors);
     }
     if (url.pathname === '/api/daily/claim' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(await socialStorage.claimDaily(userId, gameStorage, Date.now()), 200, cors);
     }
-    if (url.pathname === '/api/daily/challenges' && request.method === 'GET') { const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.challenges(userId, Date.now()), 200, cors); }
+    if (url.pathname === '/api/daily/challenges' && request.method === 'GET') { const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(await socialStorage.challenges(userId, Date.now()), 200, cors); }
     if (url.pathname === '/api/daily/challenges/claim' && request.method === 'POST') { const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const body = challengeClaimSchema.parse(await request.json()); return json(await socialStorage.claimChallenge(userId, body.type, body.answer, gameStorage, Date.now()), 200, cors); }
     if (url.pathname === '/api/referral' && request.method === 'GET') {
-      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(socialStorage.referralStatus(userId), 200, cors);
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); return json(await socialStorage.referralStatus(userId), 200, cors);
     }
     if (url.pathname === '/api/referral/accept' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const body = referralAcceptSchema.parse(await request.json()); await socialStorage.acceptReferral(userId, body.code, body.deviceHash, gameStorage, Date.now()); return json({ accepted: true }, 200, cors);
@@ -168,7 +173,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); await socialStorage.recordScore(userId, userId, state.coins); return json({ entries: await socialStorage.leaders() }, 200, cors);
     }
     if (url.pathname === '/api/profile' && request.method === 'GET') {
-      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); return json({ state, inventory: commerceStorage.inventory(userId), referral: socialStorage.referralStatus(userId), payments: commerceStorage.paymentHistory(userId) }, 200, cors);
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); return json({ state, inventory: commerceStorage.inventory(userId), referral: await socialStorage.referralStatus(userId), payments: commerceStorage.paymentHistory(userId) }, 200, cors);
     }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {
