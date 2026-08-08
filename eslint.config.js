@@ -2,7 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'dist-phase3', 'dist-phase4', 'dist-phase5', 'dist-phase6', 'dist-phase6-complete', 'dist-phase6-final', '.build-verification', 'node_modules', 'vendor'] },
+  { ignores: ['dist', 'dist-phase3', 'dist-phase4', 'dist-phase5', 'dist-phase6', 'dist-phase6-complete', 'dist-phase6-final', 'dist-phase7', '.build-verification', 'node_modules', 'vendor'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
