@@ -1,4 +1,5 @@
 import type { PostgresQueries, RedisCommands } from './productionStorage.ts';
+import type { LeaderboardGateway, LeaderboardPubSub } from './leaderboardGateway.ts';
 
 export interface Env {
   TELEGRAM_BOT_TOKEN: string;
@@ -9,6 +10,8 @@ export interface Env {
   POSTGRES?: PostgresQueries;
   ECONOMY_CONFIG?: { get(key: string): Promise<string | null> };
   PAYMENT_VERIFIER?: { verify(input: { provider: 'ton' | 'usdt'; transactionId: string; amount: number; asset: 'TON' | 'USDT'; userId: string }): Promise<{ verified: boolean; creditedCoins: number; status: 'confirmed' | 'failed' | 'refunded' }> };
+  LEADERBOARD_PUBSUB?: LeaderboardPubSub;
+  LEADERBOARD_WEBSOCKET?: { upgrade(request: Request, gateway: LeaderboardGateway): Promise<Response> };
 }
 
 export interface AuthenticatedUser {
