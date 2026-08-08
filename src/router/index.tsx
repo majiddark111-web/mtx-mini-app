@@ -1,19 +1,21 @@
+import { lazy } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { ProtectedAdminRoute } from '../components/auth/ProtectedAdminRoute';
 import { AppLayout } from '../layouts/AppLayout';
-import { GamePage } from '../pages/GamePage';
-import { HomePage } from '../pages/HomePage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
-import { StorePage } from '../pages/StorePage';
-import { InventoryPage } from '../pages/InventoryPage';
-import { WalletPage } from '../pages/WalletPage';
-import { MissionsPage } from '../pages/MissionsPage';
-import { DailyRewardPage } from '../pages/DailyRewardPage';
-import { LeaderboardPage } from '../pages/LeaderboardPage';
-import { ReferralPage } from '../pages/ReferralPage';
-import { ProfilePage } from '../pages/ProfilePage';
-import { AdminLoginPage } from '../pages/AdminLoginPage';
-import { AdminPage } from '../pages/AdminPage';
+
+const HomePage = lazy(() => import('../pages/HomePage').then(({ HomePage }) => ({ default: HomePage })));
+const GamePage = lazy(() => import('../pages/GamePage').then(({ GamePage }) => ({ default: GamePage })));
+const StorePage = lazy(() => import('../pages/StorePage').then(({ StorePage }) => ({ default: StorePage })));
+const InventoryPage = lazy(() => import('../pages/InventoryPage').then(({ InventoryPage }) => ({ default: InventoryPage })));
+const WalletPage = lazy(() => import('../pages/WalletPage').then(({ WalletPage }) => ({ default: WalletPage })));
+const MissionsPage = lazy(() => import('../pages/MissionsPage').then(({ MissionsPage }) => ({ default: MissionsPage })));
+const DailyRewardPage = lazy(() => import('../pages/DailyRewardPage').then(({ DailyRewardPage }) => ({ default: DailyRewardPage })));
+const LeaderboardPage = lazy(() => import('../pages/LeaderboardPage').then(({ LeaderboardPage }) => ({ default: LeaderboardPage })));
+const ReferralPage = lazy(() => import('../pages/ReferralPage').then(({ ReferralPage }) => ({ default: ReferralPage })));
+const ProfilePage = lazy(() => import('../pages/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })));
+const AdminLoginPage = lazy(() => import('../pages/AdminLoginPage').then(({ AdminLoginPage }) => ({ default: AdminLoginPage })));
+const AdminPage = lazy(() => import('../pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
 
 const placeholder = (title: string, description: string) => <PlaceholderPage title={title} description={description} />;
 export const router = createBrowserRouter([{ element: <AppLayout />, children: [
