@@ -1,4 +1,4 @@
-# Lumos Economy Specification v1
+# MTX Economy Specification v1
 
 ## Currency flow
 

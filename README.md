@@ -1,6 +1,6 @@
-# Lumos Telegram Mini App
+# MTX Telegram Mini App
 
-Lumos is a TypeScript Telegram tap-to-earn mini app with a React/Vite client and a Fetch-compatible server core. It includes server-authoritative taps and energy, offline profit, configurable economy, store/inventory, wallet verification hooks, missions, daily challenges, referrals, Redis leaderboards, an isolated admin flow and replay-safe request signing.
+MTX is a TypeScript Telegram tap-to-earn mini app with a React/Vite client and a Fetch-compatible server core. It includes server-authoritative taps and energy, offline profit, configurable economy, store/inventory, wallet verification hooks, missions, daily challenges, referrals, Redis leaderboards, an isolated admin flow and replay-safe request signing.
 
 ## Requirements
 
@@ -80,4 +80,4 @@ The local runner intentionally uses process memory and does not represent a mult
 
 ## Version
 
-`2.0.0-phase-10`
+`2.0.0-mtx`

@@ -1,4 +1,4 @@
-# Lumos Phase 2 report
+# MTX Phase 2 report
 
 ## Status
 

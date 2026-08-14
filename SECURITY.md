@@ -1,6 +1,6 @@
-# Lumos security boundary
+# MTX security boundary
 
-Lumos validates Telegram `initData` server-side before issuing a short-lived player JWT. Authenticated HTTP requests use a per-session HMAC signature, a 30-second timestamp window and one-time nonces. Production replay protection uses atomic Redis operations. Tap rate, energy, offline profit, purchases, claims and payment credits are calculated or verified by the server.
+MTX validates Telegram `initData` server-side before issuing a short-lived player JWT. Authenticated HTTP requests use a per-session HMAC signature, a 30-second timestamp window and one-time nonces. Production replay protection uses atomic Redis operations. Tap rate, energy, offline profit, purchases, claims and payment credits are calculated or verified by the server.
 
 The browser remains an untrusted device. Request signing does not make client code authoritative because a determined user controls the browser and its memory. Never accept client-reported balance, energy, upgrade state, task completion, payment result or referral identity.
 

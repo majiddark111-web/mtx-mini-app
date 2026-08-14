@@ -1,4 +1,4 @@
-# Lumos Phase 6 — Missions, Daily, Referral, Leaderboard, Profile
+# MTX Phase 6 — Missions, Daily, Referral, Leaderboard, Profile
 
 ## Delivered
 

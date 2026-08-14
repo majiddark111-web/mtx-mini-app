@@ -20,7 +20,7 @@ export function catalogFor(state: ServerGameState, economy: EconomyConfig, inven
   });
   const owned = new Set(inventory.map((entry) => entry.itemId));
   return [...dynamic,
-    { id: 'skin:aurora', category: 'skin', title: 'Aurora Skin', description: 'Lumos aurora coin appearance', price: economy.upgrades.tap.baseCost * 3, featured: true, limited: true, owned: owned.has('skin:aurora') },
+    { id: 'skin:aurora', category: 'skin', title: 'Aurora Skin', description: 'MTX aurora coin appearance', price: economy.upgrades.tap.baseCost * 3, featured: true, limited: true, owned: owned.has('skin:aurora') },
     { id: 'boost:recharge', category: 'boost', title: 'Recharge Boost', description: 'Inventory boost for a future timed activation', price: economy.upgrades.energy.baseCost, featured: false, limited: false, owned: false },
     { id: 'consumable:energy', category: 'consumable', title: 'Energy Cell', description: 'Consumable reserved for Phase 5 activation rules', price: Math.ceil(economy.upgrades.energy.baseCost / 3), featured: false, limited: false, owned: false },
   ];

@@ -1,4 +1,4 @@
-# Lumos Phase 3 — Game Core
+# MTX Phase 3 — Game Core
 
 ## Approved parameters
 

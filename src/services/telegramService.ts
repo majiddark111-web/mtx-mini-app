@@ -16,7 +16,7 @@ export function initializeTelegram(): () => void {
   const app = getTelegramApp();
   app?.ready?.(); app?.expand?.(); applyTheme();
   app?.onEvent?.('themeChanged', applyTheme);
-  app?.CloudStorage?.setItem('lumos_last_seen', String(Date.now()));
+  app?.CloudStorage?.setItem('mtx_last_seen', String(Date.now()));
   return () => app?.offEvent?.('themeChanged', applyTheme);
 }
 export function openExternalLink(url: string): void {

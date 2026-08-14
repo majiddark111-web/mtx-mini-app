@@ -23,9 +23,9 @@ httpClient.interceptors.request.use(async (config) => {
     const canonical = `${(config.method ?? 'GET').toUpperCase()}\n${pathname}\n${timestamp}\n${nonce}\n${base64Url(bodyHash)}`;
     const key = await crypto.subtle.importKey('raw', decodeBase64Url(sessionKey).slice().buffer as ArrayBuffer, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const signature = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(canonical)));
-    config.headers['X-Lumos-Timestamp'] = timestamp;
-    config.headers['X-Lumos-Nonce'] = nonce;
-    config.headers['X-Lumos-Signature'] = base64Url(signature);
+    config.headers['X-MTX-Timestamp'] = timestamp;
+    config.headers['X-MTX-Nonce'] = nonce;
+    config.headers['X-MTX-Signature'] = base64Url(signature);
   }
   return config;
 });

@@ -1,4 +1,4 @@
-# Lumos Phase 4 — Economy Balance
+# MTX Phase 4 — Economy Balance
 
 ## Delivered
 

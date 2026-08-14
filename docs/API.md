@@ -6,9 +6,9 @@ All responses are JSON. Player endpoints require `Authorization: Bearer <jwt>` a
 
 Headers:
 
-- `X-Lumos-Timestamp`: Unix milliseconds, accepted within ±30 seconds.
-- `X-Lumos-Nonce`: unique 16–80 character URL-safe value.
-- `X-Lumos-Signature`: base64url HMAC-SHA256 signature.
+- `X-MTX-Timestamp`: Unix milliseconds, accepted within ±30 seconds.
+- `X-MTX-Nonce`: unique 16–80 character URL-safe value.
+- `X-MTX-Signature`: base64url HMAC-SHA256 signature.
 
 Canonical input:
 

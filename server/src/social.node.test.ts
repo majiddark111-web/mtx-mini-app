@@ -14,9 +14,9 @@ describe('phase 6 social systems', () => {
 
   it('rejects self-referral and device reuse across accounts', async () => {
     const social = new SocialStorage(); const game = new GameStorage(); const fingerprint = 'a'.repeat(64);
-    await assert.rejects(() => social.acceptReferral('1', 'LUMOS-1', fingerprint, game, Date.now()), /REFERRAL_SELF/);
-    await social.acceptReferral('2', 'LUMOS-1', fingerprint, game, Date.now());
-    await assert.rejects(() => social.acceptReferral('3', 'LUMOS-1', fingerprint, game, Date.now()), /REFERRAL_DEVICE_REUSED/);
+    await assert.rejects(() => social.acceptReferral('1', 'MTX-1', fingerprint, game, Date.now()), /REFERRAL_SELF/);
+    await social.acceptReferral('2', 'MTX-1', fingerprint, game, Date.now());
+    await assert.rejects(() => social.acceptReferral('3', 'MTX-1', fingerprint, game, Date.now()), /REFERRAL_DEVICE_REUSED/);
     assert.equal((await game.stateFor('1', Date.now())).coins, 500); assert.equal((await game.stateFor('2', Date.now())).coins, 250);
   });
 
@@ -41,7 +41,7 @@ describe('phase 6 social systems', () => {
   it('validates combo and cipher on the server and prevents repeat claims', async () => {
     const social = new SocialStorage(); const game = new GameStorage(); const now = Date.UTC(2026, 0, 1);
     await assert.rejects(() => social.claimChallenge('1', 'cipher', ['WRONG'], game, now), /CHALLENGE_INCORRECT/);
-    assert.equal((await social.claimChallenge('1', 'cipher', ['LUMOS'], game, now)).reward, 500);
+    assert.equal((await social.claimChallenge('1', 'cipher', ['MTX'], game, now)).reward, 500);
     assert.equal((await social.claimChallenge('1', 'combo', ['upgrade:tap', 'skin:aurora', 'boost:recharge'], game, now)).reward, 750);
     await assert.rejects(() => social.claimChallenge('1', 'combo', ['upgrade:tap', 'skin:aurora', 'boost:recharge'], game, now), /CHALLENGE_ALREADY_CLAIMED/);
     assert.equal((await game.stateFor('1', now)).coins, 1_250);

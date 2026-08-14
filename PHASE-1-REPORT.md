@@ -1,4 +1,4 @@
-# Lumos Phase 1 report
+# MTX Phase 1 report
 
 ## Status
 
@@ -32,7 +32,7 @@ The Admin route guard in Phase 1 is a client navigation guard only. Real authori
 
 ## Commits
 
-- `e43feba` — reviewed Lumos baseline
+- `e43feba` — reviewed MTX baseline
 - `c1461d5` — Phase 1 frontend architecture
 - `173d33c` — responsibility folders and UI view-model extraction
 

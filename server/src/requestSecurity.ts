@@ -15,7 +15,7 @@ async function sha256(value: string): Promise<string> {
 }
 
 export async function deriveSessionKey(claims: Pick<SessionClaims, 'sub' | 'iat'>, jwtSecret: string): Promise<string> {
-  return toBase64Url(await hmac(`lumos-request-v1\n${claims.sub}\n${claims.iat}`, utf8(jwtSecret)));
+  return toBase64Url(await hmac(`mtx-request-v1\n${claims.sub}\n${claims.iat}`, utf8(jwtSecret)));
 }
 
 export async function createRequestSignature(method: string, pathname: string, timestamp: string, nonce: string, body: string, sessionKey: string): Promise<string> {
@@ -41,7 +41,7 @@ export class RedisReplayProtection implements ReplayProtection {
   private readonly redis: RedisCommands;
   constructor(redis: RedisCommands) { this.redis = redis; }
   async consume(userId: string, nonce: string, ttlMs = NONCE_TTL_MS): Promise<boolean> {
-    const result = await this.redis.command<string | null>(['SET', `lumos:nonce:${userId}:${nonce}`, '1', 'NX', 'PX', String(ttlMs)]);
+    const result = await this.redis.command<string | null>(['SET', `mtx:nonce:${userId}:${nonce}`, '1', 'NX', 'PX', String(ttlMs)]);
     return result === 'OK';
   }
 }
@@ -49,9 +49,9 @@ export class RedisReplayProtection implements ReplayProtection {
 export type RequestSecurityFailure = 'missing_signature' | 'stale_timestamp' | 'invalid_nonce' | 'forged_signature' | 'replayed_request';
 
 export async function validateSignedRequest(request: Request, claims: SessionClaims, jwtSecret: string, replay: ReplayProtection, now = Date.now()): Promise<RequestSecurityFailure | null> {
-  const timestamp = request.headers.get('x-lumos-timestamp');
-  const nonce = request.headers.get('x-lumos-nonce');
-  const signature = request.headers.get('x-lumos-signature');
+  const timestamp = request.headers.get('x-mtx-timestamp');
+  const nonce = request.headers.get('x-mtx-nonce');
+  const signature = request.headers.get('x-mtx-signature');
   if (!timestamp || !nonce || !signature) return 'missing_signature';
   const parsedTimestamp = Number(timestamp);
   if (!Number.isSafeInteger(parsedTimestamp) || Math.abs(now - parsedTimestamp) > REQUEST_WINDOW_MS) return 'stale_timestamp';

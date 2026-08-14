@@ -1,4 +1,4 @@
-# Lumos review and change report
+# MTX review and change report
 
 ## Selected base
 
@@ -8,7 +8,7 @@ The plain `mini-tx-webapp-final-clean.zip` is the smallest baseline. Compared wi
 
 ## Changes applied
 
-- Preserved the Lumos identity and changed page metadata/title from the generic Mini TX name to Lumos.
+- Preserved the MTX identity and changed page metadata/title from the generic Mini TX name to MTX.
 - Made Telegram WebApp initialization optional and safe, so the app also runs in a regular browser.
 - Added versioned persistence for score, energy, capacity, tap/energy levels, tap power, and boost history.
 - Validated and bounded restored browser data to avoid crashes and invalid/negative state.

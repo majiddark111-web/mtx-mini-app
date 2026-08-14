@@ -1,9 +1,9 @@
-# Lumos Phase 7 — Admin Panel
+# MTX Phase 7 — Admin Panel
 
 ## Delivered
 
 - Separate admin credential + OTP verifier; Telegram player authentication is not reused
-- Separate admin JWT secret, 15-minute token, `role=admin`, and `scope=lumos:admin`
+- Separate admin JWT secret, 15-minute token, `role=admin`, and `scope=mtx:admin`
 - Server-side RBAC on every `/api/admin/*` endpoint
 - Dashboard statistics and audit-log summary
 - Users list and ban/unban controls with player-request enforcement

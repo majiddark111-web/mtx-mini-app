@@ -39,8 +39,8 @@ Generate secrets with a cryptographic secret manager. Never prefix a secret with
 Set build-time public values:
 
 ```text
-VITE_API_BASE=https://api.lumosgame.com
-VITE_LEADERBOARD_WS=wss://api.lumosgame.com/api/leaderboard/live
+VITE_API_BASE=https://api.mtxgame.com
+VITE_LEADERBOARD_WS=wss://api.mtxgame.com/api/leaderboard/live
 ```
 
 Then run:
@@ -66,7 +66,7 @@ The current repository intentionally exposes provider interfaces rather than ven
 1. Set the Mini App URL in BotFather to the HTTPS frontend.
 2. Ensure `APP_ORIGIN` exactly matches that origin.
 3. Update `public/tonconnect-manifest.json` with final production URLs and icons.
-4. Open `https://t.me/LumosGameBot?startapp` (replace with the real username).
+4. Open `https://t.me/MTXGameBot?startapp` (replace with the real username).
 5. Confirm forged/expired initData is rejected before enabling rewards.
 
 ## 6. Release gates

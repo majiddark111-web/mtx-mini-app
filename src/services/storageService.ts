@@ -1,7 +1,7 @@
 import { DEFAULT_GAME_STATE } from '../constants/game';
 import type { BoostHistoryItem, GameState } from '../types/game';
 
-const STORAGE_KEY = 'lumos.gameState.v2';
+const STORAGE_KEY = 'mtx.gameState.v2';
 
 const safeNumber = (value: unknown, fallback: number, minimum = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(minimum, value) : fallback;

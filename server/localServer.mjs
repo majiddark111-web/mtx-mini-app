@@ -19,4 +19,4 @@ createServer(async (incoming, outgoing) => {
     const response = await handleRequest(request, env);
     outgoing.writeHead(response.status, Object.fromEntries(response.headers)); outgoing.end(Buffer.from(await response.arrayBuffer()));
   } catch { outgoing.writeHead(500, { 'content-type': 'application/json' }); outgoing.end('{"error":"Local server error"}'); }
-}).listen(port, '127.0.0.1', () => process.stdout.write(`Lumos API listening on http://127.0.0.1:${port}\n`));
+}).listen(port, '127.0.0.1', () => process.stdout.write(`MTX API listening on http://127.0.0.1:${port}\n`));

@@ -31,7 +31,7 @@ const clientIp = (request: Request): string => request.headers.get('cf-connectin
 
 function corsHeaders(request: Request, env: Env): HeadersInit {
   const origin = request.headers.get('origin');
-  return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type, x-lumos-timestamp, x-lumos-nonce, x-lumos-signature', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
+  return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type, x-mtx-timestamp, x-mtx-nonce, x-mtx-signature', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
 }
 
 function validateEnv(env: Env): void {

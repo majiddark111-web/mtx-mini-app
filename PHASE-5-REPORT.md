@@ -1,4 +1,4 @@
-# Lumos Phase 5 — Store, Inventory, Wallet
+# MTX Phase 5 — Store, Inventory, Wallet
 
 ## Delivered
 
@@ -25,7 +25,7 @@
 
 ## Required before real-money launch
 
-- Replace all `play.example.com` values in `public/tonconnect-manifest.json` with the final HTTPS Lumos domain and real policy URLs.
+- Replace all `play.example.com` values in `public/tonconnect-manifest.json` with the final HTTPS MTX domain and real policy URLs.
 - Register a real TON Connect SDK adapter through `configureTonConnect`; the current UI intentionally disables the connect button.
 - Provide a `PAYMENT_VERIFIER` implementation that checks TON/USDT transactions against the chain or trusted provider, validates destination, amount, finality, and memo/user binding.
 - Wire commerce persistence methods to the PostgreSQL tables. The current repository provides the schema and secure flow tests, while its runtime commerce adapter remains in-memory.

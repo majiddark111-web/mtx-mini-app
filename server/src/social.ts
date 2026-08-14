@@ -55,18 +55,18 @@ export class SocialStorage {
     return { reward, streak, state: updated };
   }
 
-  async referralStatus(userId: string): Promise<{ code: string; invited: number; earned: number }> { const invited = this.persistence ? await this.persistence.referralCount(userId) : [...this.referrals.values()].filter((record) => record.referrerId === userId).length; return { code: `LUMOS-${userId}`, invited, earned: invited * 500 }; }
+  async referralStatus(userId: string): Promise<{ code: string; invited: number; earned: number }> { const invited = this.persistence ? await this.persistence.referralCount(userId) : [...this.referrals.values()].filter((record) => record.referrerId === userId).length; return { code: `MTX-${userId}`, invited, earned: invited * 500 }; }
 
   async challenges(userId: string, now: number): Promise<{ combo: { slots: number; reward: number; claimed: boolean }; cipher: { hint: string; length: number; reward: number; claimed: boolean } }> { const day = dayKey(now); const combo = this.persistence ? await this.persistence.challengeClaimed(userId, 'combo', day) : this.challengeClaims.has(`${userId}:combo:${day}`); const cipher = this.persistence ? await this.persistence.challengeClaimed(userId, 'cipher', day) : this.challengeClaims.has(`${userId}:cipher:${day}`); return { combo: { slots: 3, reward: 750, claimed: combo }, cipher: { hint: 'The name that lights the game', length: 5, reward: 500, claimed: cipher } }; }
 
   async claimChallenge(userId: string, type: 'combo' | 'cipher', answer: string[], game: GameStorage, now: number): Promise<{ reward: number }> {
     const key = `${userId}:${type}:${dayKey(now)}`; if (this.challengeClaims.has(key)) throw new Error('CHALLENGE_ALREADY_CLAIMED');
-    const valid = type === 'cipher' ? answer.length === 1 && answer[0].trim().toUpperCase() === 'LUMOS' : answer.join('|') === 'upgrade:tap|skin:aurora|boost:recharge'; if (!valid) throw new Error('CHALLENGE_INCORRECT');
+    const valid = type === 'cipher' ? answer.length === 1 && answer[0].trim().toUpperCase() === 'MTX' : answer.join('|') === 'upgrade:tap|skin:aurora|boost:recharge'; if (!valid) throw new Error('CHALLENGE_INCORRECT');
     const reward = type === 'combo' ? 750 : 500; if (this.persistence) { if (!await this.persistence.claimChallenge(userId, type, dayKey(now), reward, now)) throw new Error('CHALLENGE_ALREADY_CLAIMED'); } else this.challengeClaims.add(key); const state = await game.stateFor(userId, now); const updated = { ...state, coins: state.coins + reward, version: state.version + 1 }; game.saveHot(updated); await this.recordScore(userId, userId, updated.coins); return { reward };
   }
 
   async acceptReferral(refereeId: string, code: string, deviceHash: string, game: GameStorage, now: number): Promise<void> {
-    const referrerId = code.startsWith('LUMOS-') ? code.slice(6) : ''; if (!referrerId || referrerId === refereeId) throw new Error('REFERRAL_SELF');
+    const referrerId = code.startsWith('MTX-') ? code.slice(4) : ''; if (!referrerId || referrerId === refereeId) throw new Error('REFERRAL_SELF');
     if (this.referrals.has(refereeId)) throw new Error('REFERRAL_ALREADY_USED');
     if (this.referralDevices.has(deviceHash)) throw new Error('REFERRAL_DEVICE_REUSED');
     if (this.persistence) { const result = await this.persistence.createReferral(referrerId, refereeId, deviceHash, now); if (result === 'referee-used') throw new Error('REFERRAL_ALREADY_USED'); if (result === 'device-used') throw new Error('REFERRAL_DEVICE_REUSED'); } else { this.referrals.set(refereeId, { referrerId, refereeId, deviceHash, createdAt: now }); this.referralDevices.add(deviceHash); }

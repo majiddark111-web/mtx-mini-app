@@ -14,7 +14,7 @@ export function useTelegramNavigation(): void {
   useEffect(() => {
     const mainButton = getTelegramApp()?.MainButton;
     const play = () => navigate('/game');
-    if (location.pathname === '/') { mainButton?.setText('Play Lumos'); mainButton?.show(); mainButton?.onClick(play); } else mainButton?.hide();
+    if (location.pathname === '/') { mainButton?.setText('Play MTX'); mainButton?.show(); mainButton?.onClick(play); } else mainButton?.hide();
     return () => mainButton?.offClick(play);
   }, [location.pathname, navigate]);
 }

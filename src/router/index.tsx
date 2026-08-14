@@ -33,5 +33,5 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: '/history', element: placeholder('History', 'Reward, upgrade and transaction history will appear here.') },
   { path: '/admin/login', element: <AdminLoginPage /> },
   { element: <ProtectedAdminRoute />, children: [{ path: '/admin', element: <AdminPage /> }] },
-  { path: '*', element: placeholder('Not Found', 'This Lumos page does not exist.') },
+  { path: '*', element: placeholder('Not Found', 'This MTX page does not exist.') },
 ]}]);
