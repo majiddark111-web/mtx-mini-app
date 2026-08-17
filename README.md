@@ -37,7 +37,30 @@ pnpm test
 pnpm build
 ```
 
-The current baseline is 38 passing tests. The Phase 9 initial bundle budget is less than 100 KiB gzip JavaScript and 5 KiB gzip CSS.
+The current baseline is 50 passing tests. The Phase 9 initial bundle budget is less than 100 KiB gzip JavaScript and 5 KiB gzip CSS.
+
+### Real infrastructure integration
+
+The integration runner is deliberately disabled by default because it applies the schema and writes temporary records. Point `MTX_INFRASTRUCTURE_MODULE` to a local ESM provider module exporting these adapters:
+
+```js
+export const postgres = {
+  query: async (sql, values) => ({ rows: [] }),
+  transaction: async (operation) => operation(postgres),
+};
+export const redis = { command: async (parts) => null };
+export async function close() {}
+```
+
+The real implementation must use the transaction and pooling APIs of the selected PostgreSQL driver; the example only documents the contract. Run against an isolated test database and Redis namespace:
+
+```bash
+MTX_INFRASTRUCTURE_MODULE=/absolute/path/to/mtx-provider.mjs \
+MTX_INTEGRATION_ALLOW_WRITE=true \
+pnpm test:integration
+```
+
+The runner verifies schema migration, PostgreSQL rollback, atomic Redis batch claims, stale game-state rejection and Redis-to-PostgreSQL tap flushing. It refuses to run without the explicit write flag and removes its own UUID-scoped records afterward.
 
 ## Architecture
 
