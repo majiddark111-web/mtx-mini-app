@@ -1,7 +1,7 @@
 import { issueJwt, verifyJwt } from './jwt.ts';
 import { applyOfflineProfit, applyTapBatch } from './gameEngine.ts';
 import { GameStorage } from './gameStorage.ts';
-import { RateLimiter } from './rateLimiter.ts';
+import { RateLimiter, type RequestRateLimiter } from './rateLimiter.ts';
 import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
 import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
@@ -53,13 +53,13 @@ async function authenticatedUserId(request: Request, env: Env): Promise<string |
   return claims.sub;
 }
 
-export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage, adminStorage: AdminStorage = defaultAdminStorage, replayProtection: ReplayProtection = defaultReplayProtection, antiCheatMonitor: AntiCheatMonitor = defaultAntiCheatMonitor): Promise<Response> {
+export async function handleRequestWithStorage(request: Request, env: Env, gameStorage: GameStorage, commerceStorage: CommerceStorage = defaultCommerceStorage, socialStorage: SocialStorage = defaultSocialStorage, adminStorage: AdminStorage = defaultAdminStorage, replayProtection: ReplayProtection = defaultReplayProtection, antiCheatMonitor: AntiCheatMonitor = defaultAntiCheatMonitor, ipRateLimiter: RequestRateLimiter = ipLimiter, playerRateLimiter: RequestRateLimiter = userLimiter): Promise<Response> {
   const cors = corsHeaders(request, env);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
   const origin = request.headers.get('origin');
   if (origin && origin !== env.APP_ORIGIN) return json({ error: 'Forbidden origin' }, 403);
-  if (!ipLimiter.consume(`ip:${clientIp(request)}`)) return json({ error: 'Too many requests' }, 429, cors);
+  if (!await ipRateLimiter.consume(`ip:${clientIp(request)}`)) return json({ error: 'Too many requests' }, 429, cors);
   const url = new URL(request.url);
   try {
     if (url.pathname === '/api/admin/auth' && request.method === 'POST') {
@@ -114,14 +114,14 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const authorization = request.headers.get('authorization');
       if (!authorization?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401, cors);
       const claims = await verifyJwt(authorization.slice(7), env.JWT_SECRET);
-      if (!userLimiter.consume(`user:${claims.sub}`)) return json({ error: 'Too many requests' }, 429, cors);
+      if (!await playerRateLimiter.consume(`user:${claims.sub}`)) return json({ error: 'Too many requests' }, 429, cors);
       return json({ user: claims.user }, 200, cors);
     }
     if (url.pathname === '/api/game/state' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      if (!userLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
+      if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
       const current = await gameStorage.stateFor(userId, Date.now());
       const result = applyOfflineProfit(current, Date.now(), await loadEconomyConfig(env));
       gameStorage.saveHot(result.state);
@@ -137,7 +137,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     if (url.pathname === '/api/game/taps' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      if (!userLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
+      if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
       const batch = tapBatchSchema.parse(await request.json());
       const now = Date.now();
       const current = await gameStorage.stateFor(userId, now);

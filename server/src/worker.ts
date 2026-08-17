@@ -9,12 +9,15 @@ import { CommerceStorage } from './commerce.ts';
 import { PostgresCommercePersistence } from './commercePersistence.ts';
 import { AdminStorage } from './admin.ts';
 import { PostgresAdminPersistence } from './adminPersistence.ts';
+import { RedisRateLimiter } from './rateLimiter.ts';
 
 let storage: GameStorage | undefined;
 let requestsSinceFlush = 0;
 let social: SocialStorage | undefined;
 let commerce: CommerceStorage | undefined;
 let admin: AdminStorage | undefined;
+let ipRateLimiter: RedisRateLimiter | undefined;
+let playerRateLimiter: RedisRateLimiter | undefined;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -23,7 +26,9 @@ export default {
       social ??= new SocialStorage(new RedisLeaderboardRepository(env.REDIS), new PostgresSocialPersistence(env.POSTGRES));
       commerce ??= new CommerceStorage(new PostgresCommercePersistence(env.POSTGRES));
       admin ??= new AdminStorage(new PostgresAdminPersistence(env.POSTGRES));
-      const response = await handleRequestWithStorage(request, env, storage, commerce, social, admin, new RedisReplayProtection(env.REDIS));
+      ipRateLimiter ??= new RedisRateLimiter(env.REDIS, 60, 60_000, 'mtx:rate');
+      playerRateLimiter ??= new RedisRateLimiter(env.REDIS, 120, 60_000, 'mtx:rate');
+      const response = await handleRequestWithStorage(request, env, storage, commerce, social, admin, new RedisReplayProtection(env.REDIS), undefined, ipRateLimiter, playerRateLimiter);
       requestsSinceFlush += 1;
       if (requestsSinceFlush >= 100) { requestsSinceFlush = 0; await storage.flushDirty(); await flushTapEvents(storage.queue, env.POSTGRES); }
       return response;

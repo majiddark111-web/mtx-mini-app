@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { handleRequest, handleRequestWithStorage } from './app.ts';
 import { GameStorage } from './gameStorage.ts';
 import { CommerceStorage } from './commerce.ts';
-import { RateLimiter } from './rateLimiter.ts';
+import { RateLimiter, RedisRateLimiter } from './rateLimiter.ts';
 import { createTelegramHash } from './telegramAuth.ts';
 import type { Env } from './types.ts';
 import { createRequestSignature } from './requestSecurity.ts';
@@ -70,6 +70,13 @@ describe('Telegram authentication security', () => {
     assert.equal(limiter.consume('user:42', 1_100), true);
     assert.equal(limiter.consume('user:42', 1_200), false);
     assert.equal(limiter.consume('user:42', 2_001), true);
+  });
+
+  it('uses an atomic Redis script for shared production rate limits', async () => {
+    class FakeRedis { count = 0; commands: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.commands.push(parts); this.count += 1; return this.count as T; } }
+    const redis = new FakeRedis(); const limiter = new RedisRateLimiter(redis, 2, 60_000, 'mtx:rate');
+    assert.equal(await limiter.consume('ip:127.0.0.1'), true); assert.equal(await limiter.consume('ip:127.0.0.1'), true); assert.equal(await limiter.consume('ip:127.0.0.1'), false);
+    assert.equal(redis.commands[0][0], 'EVAL'); assert.match(redis.commands[0][1], /PEXPIRE/); assert.equal(redis.commands[0][3], 'mtx:rate:ip:127.0.0.1');
   });
 
   it('rejects an authenticated batch above 15 taps per second', async () => {
