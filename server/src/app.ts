@@ -69,30 +69,30 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     if (url.pathname.startsWith('/api/admin/')) {
       if (!env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) return json({ error: 'Admin authentication unavailable' }, 503, cors);
       const authorization = request.headers.get('authorization'); if (!authorization?.startsWith('Bearer ')) return json({ error: 'Forbidden' }, 403, cors); let admin; try { admin = await verifyAdminJwt(authorization.slice(7), env.ADMIN_JWT_SECRET); } catch { return json({ error: 'Forbidden' }, 403, cors); }
-      const users = gameStorage.hotStateSnapshot(); const payments = commerceStorage.allPayments(); const snapshot = adminStorage.snapshot();
+      const users = gameStorage.hotStateSnapshot(); const payments = await commerceStorage.allPayments(); const snapshot = await adminStorage.snapshot();
       if (url.pathname === '/api/admin/dashboard' && request.method === 'GET') return json({ stats: { users: users.length, banned: snapshot.banned.length, payments: payments.length, confirmedRevenue: payments.filter((item) => item.status === 'confirmed').reduce((sum, item) => sum + item.amount, 0), totalCoins: users.reduce((sum, item) => sum + item.coins, 0) }, recentLogs: snapshot.logs.slice(0, 20) }, 200, cors);
-      if (url.pathname === '/api/admin/users' && request.method === 'GET') return json({ users: users.map((user) => ({ ...user, banned: adminStorage.isBanned(user.userId) })) }, 200, cors);
+      if (url.pathname === '/api/admin/users' && request.method === 'GET') return json({ users: await Promise.all(users.map(async (user) => ({ ...user, banned: await adminStorage.isBanned(user.userId) }))) }, 200, cors);
       if (url.pathname === '/api/admin/payments' && request.method === 'GET') return json({ payments }, 200, cors);
       if (url.pathname === '/api/admin/items' && request.method === 'GET') { const state = users[0] ?? await gameStorage.stateFor('admin-preview', Date.now()); return json({ items: catalogFor(state, await loadEconomyConfig(env), []) }, 200, cors); }
       if (url.pathname === '/api/admin/logs' && request.method === 'GET') return json({ logs: snapshot.logs }, 200, cors);
       if (url.pathname === '/api/admin/anomalies' && request.method === 'GET') return json({ anomalies: antiCheatMonitor.snapshot() }, 200, cors);
       if (url.pathname === '/api/admin/notifications' && request.method === 'GET') return json({ notifications: snapshot.notifications }, 200, cors);
       if (url.pathname === '/api/admin/events' && request.method === 'GET') return json({ events: snapshot.events }, 200, cors);
-      if (url.pathname === '/api/admin/users/ban' && request.method === 'POST') { const body = adminBanSchema.parse(await request.json()); if (body.banned) adminStorage.ban(admin.sub, body.userId); else adminStorage.unban(admin.sub, body.userId); return json({ userId: body.userId, banned: body.banned }, 200, cors); }
-      if (url.pathname === '/api/admin/notifications' && request.method === 'POST') { const body = adminNotificationSchema.parse(await request.json()); return json({ notification: adminStorage.notify(admin.sub, body.title, body.message, Date.now()) }, 201, cors); }
-      if (url.pathname === '/api/admin/events' && request.method === 'POST') { const body = adminEventSchema.parse(await request.json()); return json({ event: adminStorage.createEvent(admin.sub, body.title, body.startsAt, body.endsAt, body.multiplier) }, 201, cors); }
+      if (url.pathname === '/api/admin/users/ban' && request.method === 'POST') { const body = adminBanSchema.parse(await request.json()); if (body.banned) await adminStorage.ban(admin.sub, body.userId); else await adminStorage.unban(admin.sub, body.userId); return json({ userId: body.userId, banned: body.banned }, 200, cors); }
+      if (url.pathname === '/api/admin/notifications' && request.method === 'POST') { const body = adminNotificationSchema.parse(await request.json()); return json({ notification: await adminStorage.notify(admin.sub, body.title, body.message, Date.now()) }, 201, cors); }
+      if (url.pathname === '/api/admin/events' && request.method === 'POST') { const body = adminEventSchema.parse(await request.json()); return json({ event: await adminStorage.createEvent(admin.sub, body.title, body.startsAt, body.endsAt, body.multiplier) }, 201, cors); }
       return json({ error: 'Not found' }, 404, cors);
     }
     const playerAuthorization = request.headers.get('authorization');
     if (playerAuthorization?.startsWith('Bearer ')) {
-      try {
-        const player = await verifyJwt(playerAuthorization.slice(7), env.JWT_SECRET);
-        if (adminStorage.isBanned(player.sub)) return json({ error: 'Account suspended' }, 403, cors);
-        if (!(url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket')) {
-          const failure = await validateSignedRequest(request, player, env.JWT_SECRET, replayProtection);
-          if (failure) { antiCheatMonitor.flag(player.sub, failure, { path: url.pathname }); return json({ error: 'Request security check failed', reason: failure }, failure === 'replayed_request' ? 409 : 401, cors); }
-        }
-      } catch { return json({ error: 'Unauthorized' }, 401, cors); }
+      let player;
+      try { player = await verifyJwt(playerAuthorization.slice(7), env.JWT_SECRET); }
+      catch { return json({ error: 'Unauthorized' }, 401, cors); }
+      if (await adminStorage.isBanned(player.sub)) return json({ error: 'Account suspended' }, 403, cors);
+      if (!(url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket')) {
+        const failure = await validateSignedRequest(request, player, env.JWT_SECRET, replayProtection);
+        if (failure) { antiCheatMonitor.flag(player.sub, failure, { path: url.pathname }); return json({ error: 'Request security check failed', reason: failure }, failure === 'replayed_request' ? 409 : 401, cors); }
+      }
     }
     if (url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
       if (!env.LEADERBOARD_WEBSOCKET || !env.LEADERBOARD_PUBSUB) return json({ error: 'Realtime unavailable' }, 503, cors);
@@ -101,7 +101,9 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     if (url.pathname === '/api/auth/telegram' && request.method === 'POST') {
       const body = authRequestSchema.parse(await request.json());
       const maximumAge = Number(env.AUTH_MAX_AGE_SECONDS ?? '300');
-      const user = await validateTelegramInitData(body.initData, env.TELEGRAM_BOT_TOKEN, maximumAge);
+      let user;
+      try { user = await validateTelegramInitData(body.initData, env.TELEGRAM_BOT_TOKEN, maximumAge); }
+      catch { return json({ error: 'Unauthorized' }, 401, cors); }
       const nowSeconds = Math.floor(Date.now() / 1_000);
       const token = await issueJwt(user, env.JWT_SECRET, 900, nowSeconds);
       const sessionKey = await deriveSessionKey({ sub: user.id, iat: nowSeconds }, env.JWT_SECRET);
@@ -139,9 +141,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const batch = tapBatchSchema.parse(await request.json());
       const now = Date.now();
       const current = await gameStorage.stateFor(userId, now);
-      if (gameStorage.isProcessed(userId, batch.batchId)) return json({ state: current, acceptedTaps: 0, duplicate: true }, 200, cors);
       const result = applyTapBatch(current, batch, now);
-      gameStorage.markProcessed(userId, batch.batchId, now);
+      if (!await gameStorage.claimBatch(userId, batch.batchId, now)) return json({ state: current, acceptedTaps: 0, duplicate: true }, 200, cors);
       gameStorage.saveHot(result.state);
       await gameStorage.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
       if (result.flagged) { antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
@@ -152,7 +153,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       const state = await gameStorage.stateFor(userId, Date.now());
-      return json({ items: catalogFor(state, await loadEconomyConfig(env), commerceStorage.inventory(userId)), coins: state.coins }, 200, cors);
+      return json({ items: catalogFor(state, await loadEconomyConfig(env), await commerceStorage.inventory(userId)), coins: state.coins }, 200, cors);
     }
     if (url.pathname === '/api/store/purchase' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);
@@ -165,27 +166,23 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      return json({ items: commerceStorage.inventory(userId), purchases: commerceStorage.purchaseHistory(userId) }, 200, cors);
+      return json({ items: await commerceStorage.inventory(userId), purchases: await commerceStorage.purchaseHistory(userId) }, 200, cors);
     }
     if (url.pathname === '/api/wallet/transactions' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      return json({ transactions: commerceStorage.paymentHistory(userId) }, 200, cors);
+      return json({ transactions: await commerceStorage.paymentHistory(userId) }, 200, cors);
     }
     if (url.pathname === '/api/wallet/payments/confirm' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       if (!env.PAYMENT_VERIFIER) return json({ error: 'Payment provider unavailable' }, 503, cors);
       const body = paymentConfirmationSchema.parse(await request.json());
-      const previous = commerceStorage.payment(body.transactionId);
-      if (previous) return json({ transaction: previous, duplicate: true }, 200, cors);
+      const previous = await commerceStorage.payment(body.transactionId);
+      if (previous) return previous.userId === userId ? json({ transaction: previous, duplicate: true }, 200, cors) : json({ error: 'Transaction already used' }, 409, cors);
       const verification = await env.PAYMENT_VERIFIER.verify({ ...body, userId });
-      const outcome = commerceStorage.recordPayment({ ...body, userId, creditedCoins: verification.verified && verification.status === 'confirmed' ? Math.max(0, Math.floor(verification.creditedCoins)) : 0, status: verification.verified ? verification.status : 'failed', createdAt: Date.now() });
-      if (!outcome.duplicate && outcome.record.status === 'confirmed' && outcome.record.creditedCoins > 0) {
-        const state = await gameStorage.stateFor(userId, Date.now());
-        gameStorage.saveHot({ ...state, coins: state.coins + outcome.record.creditedCoins, version: state.version + 1 });
-      }
+      const outcome = await commerceStorage.recordPayment({ ...body, userId, creditedCoins: verification.verified && verification.status === 'confirmed' ? Math.max(0, Math.floor(verification.creditedCoins)) : 0, status: verification.verified ? verification.status : 'failed', createdAt: Date.now() }, gameStorage, Date.now());
       return json({ transaction: outcome.record, duplicate: outcome.duplicate }, 200, cors);
     }
     if (url.pathname === '/api/missions' && request.method === 'GET') {
@@ -214,14 +211,14 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); await socialStorage.recordScore(userId, userId, state.coins); return json({ entries: await socialStorage.leaders() }, 200, cors);
     }
     if (url.pathname === '/api/profile' && request.method === 'GET') {
-      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); return json({ state, inventory: commerceStorage.inventory(userId), referral: await socialStorage.referralStatus(userId), payments: commerceStorage.paymentHistory(userId) }, 200, cors);
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); return json({ state, inventory: await commerceStorage.inventory(userId), referral: await socialStorage.referralStatus(userId), payments: await commerceStorage.paymentHistory(userId) }, 200, cors);
     }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {
     if (error instanceof ValidationError || error instanceof SyntaxError) return json({ error: 'Invalid request' }, 400, cors);
     if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') return json({ error: 'Insufficient coins' }, 402, cors);
-    if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'PRICE_CHANGED')) return json({ error: 'Item unavailable' }, 409, cors);
+    if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'PRICE_CHANGED' || error.message === 'STATE_VERSION_CONFLICT' || error.message === 'IDEMPOTENCY_KEY_REUSED')) return json({ error: 'Conflict' }, 409, cors);
     if (error instanceof Error && (error.message.startsWith('MISSION_') || error.message.startsWith('DAILY_') || error.message.startsWith('REFERRAL_') || error.message.startsWith('CHALLENGE_'))) return json({ error: error.message }, 409, cors);
-    return json({ error: 'Unauthorized' }, 401, cors);
+    return json({ error: 'Internal server error' }, 500, cors);
   }
 }

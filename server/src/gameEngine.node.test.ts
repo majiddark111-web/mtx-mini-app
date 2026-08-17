@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { applyOfflineProfit, applyTapBatch, calculateOfflineProfit, createGameState } from './gameEngine.ts';
 import { GameStorage, MemoryGameRepository, MemoryTapEventQueue } from './gameStorage.ts';
-import { PostgresGameRepository, RedisTapEventQueue, type PostgresQueries, type RedisCommands } from './productionStorage.ts';
+import { flushTapEvents, PostgresGameRepository, RedisBatchDeduplicator, RedisTapEventQueue, type PostgresQueries, type RedisCommands } from './productionStorage.ts';
 
 describe('server-authoritative game engine', () => {
   it('rejects and flags an implausible tap rate', () => {
@@ -55,7 +55,7 @@ describe('server-authoritative game engine', () => {
       writes = 0;
       async query<T>(sql: string): Promise<{ rows: T[] }> {
         if (sql.startsWith('SELECT')) this.reads += 1; else this.writes += 1;
-        return { rows: [] };
+        return { rows: (sql.startsWith('SELECT') ? [] : [{ user_id: 'saved' }]) as T[] };
       }
     }
     const redis = new FakeRedis();
@@ -72,5 +72,25 @@ describe('server-authoritative game engine', () => {
     assert.equal(postgres.writes, 0);
     assert.equal(await storage.flushDirty(), 100);
     assert.equal(postgres.writes, 100);
+  });
+
+  it('claims a tap batch atomically in shared Redis', async () => {
+    class FakeRedis implements RedisCommands { calls: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.calls.push(parts); return (this.calls.length === 1 ? 'OK' : null) as T; } }
+    const redis = new FakeRedis(); const batches = new RedisBatchDeduplicator(redis);
+    assert.equal(await batches.claim('42', 'batch-shared-0001', Date.now()), true);
+    assert.equal(await batches.claim('42', 'batch-shared-0001', Date.now()), false);
+    assert.deepEqual(redis.calls[0].slice(-3), ['NX', 'PX', '600000']);
+  });
+
+  it('flushes queued tap events with conflict-safe writes', async () => {
+    const queue = new MemoryTapEventQueue(); await queue.enqueue({ userId: '42', batch: { taps: 5, durationMs: 1_000, batchId: 'batch-persist-0001' }, acceptedTaps: 5, receivedAt: Date.now() });
+    class CaptureDatabase implements PostgresQueries { sql = ''; async query<T>(sql: string): Promise<{ rows: T[] }> { this.sql = sql; return { rows: [] }; } }
+    const database = new CaptureDatabase(); assert.equal(await flushTapEvents(queue, database), 1); assert.equal(queue.size(), 0); assert.ok(database.sql.includes('ON CONFLICT'));
+  });
+
+  it('requeues tap events when persistence fails', async () => {
+    const queue = new MemoryTapEventQueue(); await queue.enqueue({ userId: '42', batch: { taps: 5, durationMs: 1_000, batchId: 'batch-retry-0001' }, acceptedTaps: 5, receivedAt: Date.now() });
+    class FailingDatabase implements PostgresQueries { async query<T>(): Promise<{ rows: T[] }> { throw new Error('database unavailable'); } }
+    await assert.rejects(() => flushTapEvents(queue, new FailingDatabase()), /database unavailable/); assert.equal(queue.size(), 1);
   });
 });

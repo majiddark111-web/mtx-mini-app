@@ -1,9 +1,9 @@
 import type { ServerGameState } from './gameEngine.ts';
-import { GameStorage, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
+import { GameStorage, type BatchDeduplicator, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
 import type { LeaderboardEntry, LeaderboardRepository } from './social.ts';
 
 export interface RedisCommands { command<T>(parts: string[]): Promise<T>; }
-export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; }
+export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; transaction?<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T>; }
 
 export class RedisTapEventQueue implements TapEventQueue {
   private readonly redis: RedisCommands;
@@ -18,6 +18,13 @@ export class RedisTapEventQueue implements TapEventQueue {
   }
 }
 
+export class RedisBatchDeduplicator implements BatchDeduplicator {
+  constructor(privateRedis: RedisCommands, privatePrefix = 'mtx:tap-batch') { this.redis = privateRedis; this.prefix = privatePrefix; }
+  private readonly redis: RedisCommands;
+  private readonly prefix: string;
+  async claim(userId: string, batchId: string): Promise<boolean> { const result = await this.redis.command<string | null>(['SET', `${this.prefix}:${userId}:${batchId}`, '1', 'NX', 'PX', '600000']); return result === 'OK'; }
+}
+
 export class PostgresGameRepository implements GameRepository {
   private readonly database: PostgresQueries;
   constructor(database: PostgresQueries) { this.database = database; }
@@ -27,12 +34,24 @@ export class PostgresGameRepository implements GameRepository {
     return row?.state ?? null;
   }
   async save(state: ServerGameState): Promise<void> {
-    await this.database.query('INSERT INTO mtx_game_state (user_id, state, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (user_id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()', [state.userId, JSON.stringify(state)]);
+    const result = await this.database.query<{ user_id: string }>('INSERT INTO mtx_game_state (user_id, state, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (user_id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW() WHERE (mtx_game_state.state->>\'version\')::BIGINT < (EXCLUDED.state->>\'version\')::BIGINT RETURNING user_id', [state.userId, JSON.stringify(state)]);
+    if (result.rows.length !== 1) throw new Error('STATE_VERSION_CONFLICT');
+  }
+}
+
+export async function flushTapEvents(queue: TapEventQueue, database: PostgresQueries, limit = 500): Promise<number> {
+  const events = await queue.drain(limit);
+  try {
+    for (const event of events) await database.query('INSERT INTO mtx_tap_events (user_id, batch_id, taps, accepted_taps, duration_ms, received_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, batch_id) DO NOTHING', [event.userId, event.batch.batchId, event.batch.taps, event.acceptedTaps, event.batch.durationMs, new Date(event.receivedAt).toISOString()]);
+    return events.length;
+  } catch (error) {
+    await Promise.all(events.map((event) => queue.enqueue(event)));
+    throw error;
   }
 }
 
 export function productionGameStorage(redis: RedisCommands, database: PostgresQueries): GameStorage {
-  return new GameStorage(new PostgresGameRepository(database), new RedisTapEventQueue(redis));
+  return new GameStorage(new PostgresGameRepository(database), new RedisTapEventQueue(redis), new RedisBatchDeduplicator(redis));
 }
 
 export class RedisLeaderboardRepository implements LeaderboardRepository {

@@ -160,4 +160,11 @@ describe('Telegram authentication security', () => {
     assert.equal(response.status, 401);
     assert.equal(((await response.json()) as { reason: string }).reason, 'stale_timestamp');
   });
+
+  it('does not misreport an internal storage failure as unauthorized', async () => {
+    const login = await handleRequest(authRequest(await signedInitData({ user: { id: 4204, first_name: 'MTX' } })), env); const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };
+    class FailingStorage extends GameStorage { override async stateFor(): Promise<never> { throw new Error('database unavailable'); } }
+    const response = await handleRequestWithStorage(await signedRequest('https://api.mtx.test/api/game/state', token, sessionKey), env, new FailingStorage());
+    assert.equal(response.status, 500); assert.deepEqual(await response.json(), { error: 'Internal server error' });
+  });
 });

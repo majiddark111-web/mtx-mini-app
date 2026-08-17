@@ -6,6 +6,18 @@ CREATE TABLE IF NOT EXISTS mtx_game_state (
 
 CREATE INDEX IF NOT EXISTS mtx_game_state_updated_at_idx ON mtx_game_state (updated_at);
 
+CREATE TABLE IF NOT EXISTS mtx_tap_events (
+  user_id TEXT NOT NULL,
+  batch_id TEXT NOT NULL,
+  taps INTEGER NOT NULL CHECK (taps > 0),
+  accepted_taps INTEGER NOT NULL CHECK (accepted_taps >= 0),
+  duration_ms INTEGER NOT NULL CHECK (duration_ms > 0),
+  received_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (user_id, batch_id)
+);
+
+CREATE INDEX IF NOT EXISTS mtx_tap_events_received_at_idx ON mtx_tap_events (received_at);
+
 CREATE TABLE IF NOT EXISTS mtx_inventory (
   user_id TEXT NOT NULL,
   item_id TEXT NOT NULL,
