@@ -46,4 +46,9 @@ describe('phase 6 social systems', () => {
     await assert.rejects(() => social.claimChallenge('1', 'combo', ['upgrade:tap', 'skin:aurora', 'boost:recharge'], game, now), /CHALLENGE_ALREADY_CLAIMED/);
     assert.equal((await game.stateFor('1', now)).coins, 1_250);
   });
+
+  it('publishes the MTX cipher length used by validation', async () => {
+    const challenges = await new SocialStorage().challenges('1', Date.now());
+    assert.equal(challenges.cipher.length, 3);
+  });
 });
