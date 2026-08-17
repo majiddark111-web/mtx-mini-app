@@ -4,12 +4,13 @@ import type { GameStorage } from './gameStorage.ts';
 import type { Env } from './types.ts';
 import { SocialStorage } from './social.ts';
 import { PostgresSocialPersistence } from './socialPersistence.ts';
-import { RedisReplayProtection } from './requestSecurity.ts';
+import { AntiCheatMonitor, RedisReplayProtection } from './requestSecurity.ts';
 import { CommerceStorage } from './commerce.ts';
 import { PostgresCommercePersistence } from './commercePersistence.ts';
 import { AdminStorage } from './admin.ts';
 import { PostgresAdminPersistence } from './adminPersistence.ts';
 import { RedisRateLimiter } from './rateLimiter.ts';
+import { PostgresAnomalyPersistence } from './antiCheatPersistence.ts';
 
 let storage: GameStorage | undefined;
 let requestsSinceFlush = 0;
@@ -18,6 +19,7 @@ let commerce: CommerceStorage | undefined;
 let admin: AdminStorage | undefined;
 let ipRateLimiter: RedisRateLimiter | undefined;
 let playerRateLimiter: RedisRateLimiter | undefined;
+let antiCheatMonitor: AntiCheatMonitor | undefined;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -28,7 +30,8 @@ export default {
       admin ??= new AdminStorage(new PostgresAdminPersistence(env.POSTGRES));
       ipRateLimiter ??= new RedisRateLimiter(env.REDIS, 60, 60_000, 'mtx:rate');
       playerRateLimiter ??= new RedisRateLimiter(env.REDIS, 120, 60_000, 'mtx:rate');
-      const response = await handleRequestWithStorage(request, env, storage, commerce, social, admin, new RedisReplayProtection(env.REDIS), undefined, ipRateLimiter, playerRateLimiter);
+      antiCheatMonitor ??= new AntiCheatMonitor(new PostgresAnomalyPersistence(env.POSTGRES));
+      const response = await handleRequestWithStorage(request, env, storage, commerce, social, admin, new RedisReplayProtection(env.REDIS), antiCheatMonitor, ipRateLimiter, playerRateLimiter);
       requestsSinceFlush += 1;
       if (requestsSinceFlush >= 100) { requestsSinceFlush = 0; await storage.flushDirty(); await flushTapEvents(storage.queue, env.POSTGRES); }
       return response;

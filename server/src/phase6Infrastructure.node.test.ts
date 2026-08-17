@@ -8,6 +8,7 @@ import type { PostgresQueries } from './productionStorage.ts';
 import { PostgresCommercePersistence } from './commercePersistence.ts';
 import { PostgresAdminPersistence } from './adminPersistence.ts';
 import { createGameState } from './gameEngine.ts';
+import { PostgresAnomalyPersistence } from './antiCheatPersistence.ts';
 
 describe('phase 6 production infrastructure', () => {
   it('authenticates a websocket before subscribing and pushing rankings', async () => {
@@ -40,5 +41,11 @@ describe('phase 6 production infrastructure', () => {
     await persistence.setBanned('admin-1', 'user-1', true, now);
     await persistence.notify('admin-1', { id: crypto.randomUUID(), title: 'Notice', message: 'Message', createdAt: now });
     assert.equal(database.transactions, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_admin_bans'))); assert.equal(database.statements.filter((sql) => sql.includes('mtx_admin_logs')).length, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_notifications')));
+  });
+
+  it('persists anti-cheat anomalies and reads them after process restart', async () => {
+    class FakeDatabase implements PostgresQueries { stored: { user_id: string; anomaly_type: string; details: string; created_at: string }[] = []; async query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }> { if (sql.startsWith('INSERT')) { this.stored.unshift({ user_id: String(values[1]), anomaly_type: String(values[2]), details: String(values[3]), created_at: String(values[4]) }); return { rows: [] }; } return { rows: this.stored as T[] }; } }
+    const database = new FakeDatabase(); const firstProcess = new PostgresAnomalyPersistence(database); await firstProcess.record({ userId: '42', type: 'forged_signature', at: Date.now(), details: { path: '/api/game/taps' } });
+    const afterRestart = new PostgresAnomalyPersistence(database); const records = await afterRestart.recent(100); assert.equal(records.length, 1); assert.equal(records[0].userId, '42'); assert.equal(records[0].type, 'forged_signature'); assert.deepEqual(records[0].details, { path: '/api/game/taps' });
   });
 });

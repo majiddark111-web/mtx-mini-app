@@ -75,7 +75,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (url.pathname === '/api/admin/payments' && request.method === 'GET') return json({ payments }, 200, cors);
       if (url.pathname === '/api/admin/items' && request.method === 'GET') { const state = users[0] ?? await gameStorage.stateFor('admin-preview', Date.now()); return json({ items: catalogFor(state, await loadEconomyConfig(env), []) }, 200, cors); }
       if (url.pathname === '/api/admin/logs' && request.method === 'GET') return json({ logs: snapshot.logs }, 200, cors);
-      if (url.pathname === '/api/admin/anomalies' && request.method === 'GET') return json({ anomalies: antiCheatMonitor.snapshot() }, 200, cors);
+      if (url.pathname === '/api/admin/anomalies' && request.method === 'GET') return json({ anomalies: await antiCheatMonitor.snapshot() }, 200, cors);
       if (url.pathname === '/api/admin/notifications' && request.method === 'GET') return json({ notifications: snapshot.notifications }, 200, cors);
       if (url.pathname === '/api/admin/events' && request.method === 'GET') return json({ events: snapshot.events }, 200, cors);
       if (url.pathname === '/api/admin/users/ban' && request.method === 'POST') { const body = adminBanSchema.parse(await request.json()); if (body.banned) await adminStorage.ban(admin.sub, body.userId); else await adminStorage.unban(admin.sub, body.userId); return json({ userId: body.userId, banned: body.banned }, 200, cors); }
@@ -91,7 +91,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (await adminStorage.isBanned(player.sub)) return json({ error: 'Account suspended' }, 403, cors);
       if (!(url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket')) {
         const failure = await validateSignedRequest(request, player, env.JWT_SECRET, replayProtection);
-        if (failure) { antiCheatMonitor.flag(player.sub, failure, { path: url.pathname }); return json({ error: 'Request security check failed', reason: failure }, failure === 'replayed_request' ? 409 : 401, cors); }
+        if (failure) { await antiCheatMonitor.flag(player.sub, failure, { path: url.pathname }); return json({ error: 'Request security check failed', reason: failure }, failure === 'replayed_request' ? 409 : 401, cors); }
       }
     }
     if (url.pathname === '/api/leaderboard/live' && request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
@@ -145,7 +145,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!await gameStorage.claimBatch(userId, batch.batchId, now)) return json({ state: current, acceptedTaps: 0, duplicate: true }, 200, cors);
       gameStorage.saveHot(result.state);
       await gameStorage.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
-      if (result.flagged) { antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
+      if (result.flagged) { await antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
       return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: false }, 200, cors);
     }
     if (url.pathname === '/api/store/catalog' && request.method === 'GET') {

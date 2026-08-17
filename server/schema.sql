@@ -54,5 +54,7 @@ CREATE TABLE IF NOT EXISTS mtx_referrals (referee_id TEXT PRIMARY KEY, referrer_
 CREATE TABLE IF NOT EXISTS mtx_challenge_claims (user_id TEXT NOT NULL, challenge_type TEXT NOT NULL CHECK (challenge_type IN ('combo', 'cipher')), challenge_day DATE NOT NULL, reward BIGINT NOT NULL CHECK (reward > 0), claimed_at TIMESTAMPTZ NOT NULL, PRIMARY KEY (user_id, challenge_type, challenge_day));
 CREATE TABLE IF NOT EXISTS mtx_admin_bans (user_id TEXT PRIMARY KEY, admin_id TEXT NOT NULL, reason TEXT, created_at TIMESTAMPTZ NOT NULL);
 CREATE TABLE IF NOT EXISTS mtx_admin_logs (id UUID PRIMARY KEY, admin_id TEXT NOT NULL, action TEXT NOT NULL, target TEXT, created_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE IF NOT EXISTS mtx_anti_cheat_anomalies (id UUID PRIMARY KEY, user_id TEXT NOT NULL, anomaly_type TEXT NOT NULL, details JSONB, created_at TIMESTAMPTZ NOT NULL);
+CREATE INDEX IF NOT EXISTS mtx_anti_cheat_anomalies_user_created_idx ON mtx_anti_cheat_anomalies (user_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS mtx_notifications (id UUID PRIMARY KEY, title TEXT NOT NULL, message TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL);
 CREATE TABLE IF NOT EXISTS mtx_events (id UUID PRIMARY KEY, title TEXT NOT NULL, starts_at TIMESTAMPTZ NOT NULL, ends_at TIMESTAMPTZ NOT NULL, multiplier NUMERIC NOT NULL CHECK (multiplier BETWEEN 1 AND 5));

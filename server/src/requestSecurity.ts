@@ -65,8 +65,15 @@ export async function validateSignedRequest(request: Request, claims: SessionCla
 }
 
 export interface AnomalyRecord { userId: string; type: string; at: number; details?: Record<string, string | number | boolean>; }
-export class AntiCheatMonitor {
+export interface AnomalyPersistence { record(anomaly: AnomalyRecord): Promise<void>; recent(limit: number): Promise<AnomalyRecord[]>; }
+export class MemoryAnomalyPersistence implements AnomalyPersistence {
   private readonly records: AnomalyRecord[] = [];
-  flag(userId: string, type: string, details?: AnomalyRecord['details']): void { this.records.unshift({ userId, type, at: Date.now(), details }); if (this.records.length > 1_000) this.records.length = 1_000; }
-  snapshot(): readonly AnomalyRecord[] { return this.records.map((record) => ({ ...record, details: record.details ? { ...record.details } : undefined })); }
+  async record(anomaly: AnomalyRecord): Promise<void> { this.records.unshift(structuredClone(anomaly)); if (this.records.length > 1_000) this.records.length = 1_000; }
+  async recent(limit: number): Promise<AnomalyRecord[]> { return structuredClone(this.records.slice(0, Math.max(0, limit))); }
+}
+export class AntiCheatMonitor {
+  private readonly persistence: AnomalyPersistence;
+  constructor(persistence: AnomalyPersistence = new MemoryAnomalyPersistence()) { this.persistence = persistence; }
+  flag(userId: string, type: string, details?: AnomalyRecord['details']): Promise<void> { return this.persistence.record({ userId, type, at: Date.now(), details }); }
+  snapshot(limit = 1_000): Promise<readonly AnomalyRecord[]> { return this.persistence.recent(limit); }
 }
