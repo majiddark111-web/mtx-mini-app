@@ -26,6 +26,13 @@ describe('phase 6 social systems', () => {
     await assert.rejects(() => social.claimMission('1', 'daily-taps', game, Date.now()), /MISSION_UNAVAILABLE/);
   });
 
+  it('does not reset a weekly mission on the following day', async () => {
+    const social = new SocialStorage(); const game = new GameStorage(); const monday = Date.UTC(2026, 7, 17); const state = await game.stateFor('1', monday); game.saveHot({ ...state, coins: 10_000 });
+    assert.equal((await social.claimMission('1', 'weekly-coins', game, monday)).reward, 1_000);
+    await assert.rejects(() => social.claimMission('1', 'weekly-coins', game, monday + 86_400_000), /MISSION_UNAVAILABLE/);
+    assert.equal((await social.claimMission('1', 'weekly-coins', game, monday + 7 * 86_400_000)).reward, 1_000);
+  });
+
   it('sorts a simulated 10,000-user leaderboard without database queries', async () => {
     const social = new SocialStorage();
     for (let index = 0; index < 10_000; index += 1) await social.recordScore(String(index), `player-${index}`, index);

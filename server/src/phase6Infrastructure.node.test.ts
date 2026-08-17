@@ -20,9 +20,9 @@ describe('phase 6 production infrastructure', () => {
   });
 
   it('uses conflict-safe SQL for concurrent social claims', async () => {
-    class CaptureDatabase implements PostgresQueries { statements: string[] = []; async query<T>(sql: string): Promise<{ rows: T[] }> { this.statements.push(sql); return { rows: [{ streak: 1, user_id: '1' }] as T[] }; } }
-    const database = new CaptureDatabase(); const persistence = new PostgresSocialPersistence(database); await persistence.claimDaily('1', '2026-08-08', '2026-08-07'); await persistence.claimMission('1', 'daily-taps', '2026-08-08', Date.now()); await persistence.claimChallenge('1', 'cipher', '2026-08-08', 500, Date.now());
-    assert.equal(database.statements.length, 3); assert.ok(database.statements.every((sql) => sql.includes('ON CONFLICT'))); assert.ok(database.statements[0].includes('WHERE mtx_daily_claims.claim_day <> EXCLUDED.claim_day'));
+    class CaptureDatabase implements PostgresQueries { statements: string[] = []; async transaction<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T> { return operation(this); } async query<T>(sql: string): Promise<{ rows: T[] }> { this.statements.push(sql); if (sql.startsWith('SELECT state')) return { rows: [] }; return { rows: [{ streak: 1, user_id: '1' }] as T[] }; } }
+    const database = new CaptureDatabase(); const persistence = new PostgresSocialPersistence(database); const state = createGameState('1', Date.now()); await persistence.claimDaily('1', '2026-08-08', '2026-08-07', state); await persistence.claimMission('1', 'daily-taps', '2026-08-08', Date.now(), state, 300); await persistence.claimChallenge('1', 'cipher', '2026-08-08', 500, Date.now(), state);
+    const claimStatements = database.statements.filter((sql) => sql.includes('mtx_daily_claims') || sql.includes('mtx_mission_claims') || sql.includes('mtx_challenge_claims')); assert.equal(claimStatements.length, 3); assert.ok(claimStatements.every((sql) => sql.includes('ON CONFLICT'))); assert.ok(claimStatements[0].includes('WHERE mtx_daily_claims.claim_day <> EXCLUDED.claim_day')); assert.equal(database.statements.filter((sql) => sql.includes('mtx_game_state')).length, 6);
   });
 
   it('uses database uniqueness for purchase and payment idempotency', async () => {
@@ -35,10 +35,10 @@ describe('phase 6 production infrastructure', () => {
   });
 
   it('persists admin mutations and audit logs in PostgreSQL', async () => {
-    class CaptureDatabase implements PostgresQueries { statements: string[] = []; async query<T>(sql: string): Promise<{ rows: T[] }> { this.statements.push(sql); return { rows: [] }; } }
+    class CaptureDatabase implements PostgresQueries { statements: string[] = []; transactions = 0; async transaction<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T> { this.transactions += 1; return operation(this); } async query<T>(sql: string): Promise<{ rows: T[] }> { this.statements.push(sql); return { rows: [] }; } }
     const database = new CaptureDatabase(); const persistence = new PostgresAdminPersistence(database); const now = Date.now();
     await persistence.setBanned('admin-1', 'user-1', true, now);
     await persistence.notify('admin-1', { id: crypto.randomUUID(), title: 'Notice', message: 'Message', createdAt: now });
-    assert.ok(database.statements.some((sql) => sql.includes('mtx_admin_bans'))); assert.equal(database.statements.filter((sql) => sql.includes('mtx_admin_logs')).length, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_notifications')));
+    assert.equal(database.transactions, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_admin_bans'))); assert.equal(database.statements.filter((sql) => sql.includes('mtx_admin_logs')).length, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_notifications')));
   });
 });
