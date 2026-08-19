@@ -47,7 +47,7 @@ export class SocialStorage {
     if (!mission || mission.claimed || mission.progress < mission.target) throw new Error('MISSION_UNAVAILABLE');
     let updated: ServerGameState;
     if (this.persistence) { const saved = await this.persistence.claimMission(userId, mission.id, missionPeriodKey(now, mission.period), now, state, mission.reward); if (!saved) throw new Error('MISSION_UNAVAILABLE'); updated = saved; } else { this.missionClaims.add(`${userId}:${mission.id}:${missionPeriodKey(now, mission.period)}`); updated = { ...state, coins: state.coins + mission.reward, version: state.version + 1 }; }
-    game.saveHot(updated); await this.recordScore(userId, userId, updated.coins);
+    game.saveHot(updated, !this.persistence); await this.recordScore(userId, userId, updated.coins);
     return { reward: mission.reward, state: updated };
   }
 
@@ -59,7 +59,7 @@ export class SocialStorage {
   async claimDaily(userId: string, game: GameStorage, now: number): Promise<{ reward: number; streak: number; state: ServerGameState }> {
     const status = await this.dailyStatus(userId, now); if (status.claimed) throw new Error('DAILY_ALREADY_CLAIMED');
     const previous = this.dailyClaims.get(userId); const yesterday = dayKey(now - 86_400_000); let streak = previous?.day === yesterday ? Math.min(7, previous.streak + 1) : 1; const state = await game.stateFor(userId, now); let updated: ServerGameState;
-    if (this.persistence) { const saved = await this.persistence.claimDaily(userId, dayKey(now), yesterday, state); if (saved === null) throw new Error('DAILY_ALREADY_CLAIMED'); streak = saved.streak; updated = saved.state; } else { this.dailyClaims.set(userId, { day: dayKey(now), streak }); const reward = streak * 100; updated = { ...state, coins: state.coins + reward, version: state.version + 1 }; } const reward = streak * 100; game.saveHot(updated); await this.recordScore(userId, userId, updated.coins);
+    if (this.persistence) { const saved = await this.persistence.claimDaily(userId, dayKey(now), yesterday, state); if (saved === null) throw new Error('DAILY_ALREADY_CLAIMED'); streak = saved.streak; updated = saved.state; } else { this.dailyClaims.set(userId, { day: dayKey(now), streak }); const reward = streak * 100; updated = { ...state, coins: state.coins + reward, version: state.version + 1 }; } const reward = streak * 100; game.saveHot(updated, !this.persistence); await this.recordScore(userId, userId, updated.coins);
     return { reward, streak, state: updated };
   }
 
@@ -70,7 +70,7 @@ export class SocialStorage {
   async claimChallenge(userId: string, type: 'combo' | 'cipher', answer: string[], game: GameStorage, now: number): Promise<{ reward: number }> {
     const key = `${userId}:${type}:${dayKey(now)}`; if (this.challengeClaims.has(key)) throw new Error('CHALLENGE_ALREADY_CLAIMED');
     const valid = type === 'cipher' ? answer.length === 1 && answer[0].trim().toUpperCase() === 'MTX' : answer.join('|') === 'upgrade:tap|skin:aurora|boost:recharge'; if (!valid) throw new Error('CHALLENGE_INCORRECT');
-    const reward = type === 'combo' ? 750 : 500; const state = await game.stateFor(userId, now); let updated: ServerGameState; if (this.persistence) { const saved = await this.persistence.claimChallenge(userId, type, dayKey(now), reward, now, state); if (!saved) throw new Error('CHALLENGE_ALREADY_CLAIMED'); updated = saved; } else { this.challengeClaims.add(key); updated = { ...state, coins: state.coins + reward, version: state.version + 1 }; } game.saveHot(updated); await this.recordScore(userId, userId, updated.coins); return { reward };
+    const reward = type === 'combo' ? 750 : 500; const state = await game.stateFor(userId, now); let updated: ServerGameState; if (this.persistence) { const saved = await this.persistence.claimChallenge(userId, type, dayKey(now), reward, now, state); if (!saved) throw new Error('CHALLENGE_ALREADY_CLAIMED'); updated = saved; } else { this.challengeClaims.add(key); updated = { ...state, coins: state.coins + reward, version: state.version + 1 }; } game.saveHot(updated, !this.persistence); await this.recordScore(userId, userId, updated.coins); return { reward };
   }
 
   async acceptReferral(refereeId: string, code: string, deviceHash: string, game: GameStorage, now: number): Promise<void> {
@@ -78,7 +78,7 @@ export class SocialStorage {
     if (this.referrals.has(refereeId)) throw new Error('REFERRAL_ALREADY_USED');
     if (this.referralDevices.has(deviceHash)) throw new Error('REFERRAL_DEVICE_REUSED');
     const referee = await game.stateFor(refereeId, now); const referrer = await game.stateFor(referrerId, now);
-    if (this.persistence) { const outcome = await this.persistence.createReferral(referrerId, refereeId, deviceHash, now, referrer, referee); if (outcome.result === 'referee-used') throw new Error('REFERRAL_ALREADY_USED'); if (outcome.result === 'device-used') throw new Error('REFERRAL_DEVICE_REUSED'); if (!outcome.referee || !outcome.referrer) throw new Error('REFERRAL_PERSISTENCE_FAILED'); game.saveHot(outcome.referee); game.saveHot(outcome.referrer); } else { this.referrals.set(refereeId, { referrerId, refereeId, deviceHash, createdAt: now }); this.referralDevices.add(deviceHash); game.saveHot({ ...referee, coins: referee.coins + 250, version: referee.version + 1 }); game.saveHot({ ...referrer, coins: referrer.coins + 500, version: referrer.version + 1 }); }
+    if (this.persistence) { const outcome = await this.persistence.createReferral(referrerId, refereeId, deviceHash, now, referrer, referee); if (outcome.result === 'referee-used') throw new Error('REFERRAL_ALREADY_USED'); if (outcome.result === 'device-used') throw new Error('REFERRAL_DEVICE_REUSED'); if (!outcome.referee || !outcome.referrer) throw new Error('REFERRAL_PERSISTENCE_FAILED'); game.saveHot(outcome.referee, false); game.saveHot(outcome.referrer, false); } else { this.referrals.set(refereeId, { referrerId, refereeId, deviceHash, createdAt: now }); this.referralDevices.add(deviceHash); game.saveHot({ ...referee, coins: referee.coins + 250, version: referee.version + 1 }); game.saveHot({ ...referrer, coins: referrer.coins + 500, version: referrer.version + 1 }); }
   }
 
   recordScore(userId: string, username: string, coins: number): Promise<void> { return this.leaderboard.record(userId, username, coins); }

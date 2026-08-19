@@ -9,10 +9,10 @@
 - Secret manager for Telegram, JWT, admin and provider credentials.
 - Payment/chain verifier that independently queries TON/USDT transaction truth.
 
-Apply the database schema before accepting traffic:
+Apply all pending migrations before accepting traffic:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f server/schema.sql
+pnpm db:migrate
 ```
 
 ## 2. Configure server values
@@ -24,8 +24,10 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f server/schema.sql
 | `ADMIN_JWT_SECRET` | yes for admin | Separate random admin JWT secret, ≥32 characters |
 | `APP_ORIGIN` | yes | Exact HTTPS frontend origin |
 | `AUTH_MAX_AGE_SECONDS` | yes | Telegram initData freshness; recommended `300` |
-| `REDIS` | production | Implements `RedisCommands.command(parts)` |
-| `POSTGRES` | production | Implements `PostgresQueries.query(sql, values)` |
+| `DATABASE_URL` | Node production | PostgreSQL connection URL; server-only |
+| `REDIS_URL` | Node production | TLS Redis URL (`rediss://` in production); server-only |
+| `POSTGRES_POOL_MAX` | optional | Maximum PostgreSQL pool size; defaults to `10` |
+| `POSTGRES_TLS_REJECT_UNAUTHORIZED` | optional | Keep `true`; disable only for a controlled private CA |
 | `ECONOMY_CONFIG` | recommended | Runtime configuration provider with `get(key)` |
 | `PAYMENT_VERIFIER` | payments | Server-side TON/USDT verification interface |
 | `LEADERBOARD_PUBSUB` | realtime | Shared publish/subscribe binding |
@@ -57,9 +59,16 @@ Upload `dist/` to the frontend host. Configure SPA fallback to `index.html`, imm
 
 ## 4. Deploy the API
 
-Bundle `server/src/worker.ts` for the chosen Fetch-compatible runtime and provide the typed bindings above. Configure the scheduled handler frequently enough to flush dirty game state; the worker also flushes after every 100 requests. Do not deploy `server/localServer.mjs` as the production runtime.
+For Render or another Node host, run migrations as a pre-deploy command and start the persistent API:
 
-The current repository intentionally exposes provider interfaces rather than vendor credentials. A platform adapter is still required for the selected Redis, PostgreSQL, WebSocket, payment and admin providers.
+```bash
+pnpm db:migrate
+pnpm server:start
+```
+
+Configure `/healthz` as the health-check path. The runtime persists dirty game state before returning, flushes queued tap events every five seconds and performs a final flush during graceful shutdown. Do not deploy `server/localServer.mjs` as the production runtime.
+
+Fetch-compatible platforms may still inject their own `REDIS` and `POSTGRES` bindings into `server/src/worker.ts`. Payment verification, WebSocket transport and administrator identity remain separate provider responsibilities.
 
 ## 5. Configure Telegram
 

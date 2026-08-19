@@ -6,8 +6,8 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['server/localServer.mjs'],
-    languageOptions: { globals: { process: 'readonly', Buffer: 'readonly', Headers: 'readonly', Request: 'readonly' } },
+    files: ['server/**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly', Buffer: 'readonly', Headers: 'readonly', Request: 'readonly', Response: 'readonly', URL: 'readonly', setInterval: 'readonly', clearInterval: 'readonly' } },
   },
   {
     files: ['src/**/*.{ts,tsx}'],

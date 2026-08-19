@@ -20,7 +20,9 @@
 | `server/src/productionStorage.ts` | Redis/PostgreSQL game and leaderboard adapters |
 | `server/src/socialPersistence.ts` | PostgreSQL social claim persistence |
 | `server/src/worker.ts` | Production binding composition and scheduled flush |
-| `server/schema.sql` | Required PostgreSQL tables and constraints |
+| `server/migrations/` | Ordered, checksummed PostgreSQL migrations |
+| `server/nodeInfrastructure.mjs` | Pooled PostgreSQL and TLS Redis provider |
+| `server/productionServer.mjs` | Persistent Node API entry point |
 | `economy` | Versioned, runtime-tunable economy configuration |
 | `PHASE-*-REPORT.md` | Verified milestone reports |
 

@@ -1,17 +1,15 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import process from 'node:process';
-import { pathToFileURL, URL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { createGameState } from '../src/gameEngine.ts';
 import { flushTapEvents, PostgresGameRepository, RedisBatchDeduplicator, RedisTapEventQueue } from '../src/productionStorage.ts';
+import { runMigrations } from '../migrations.mjs';
 
 if (process.env.MTX_INTEGRATION_ALLOW_WRITE !== 'true') throw new Error('Set MTX_INTEGRATION_ALLOW_WRITE=true only for an isolated MTX test database and Redis namespace');
 const providerPath = process.env.MTX_INFRASTRUCTURE_MODULE;
-if (!providerPath) throw new Error('MTX_INFRASTRUCTURE_MODULE must point to a local provider module exporting postgres and redis adapters');
-
-const provider = await import(pathToFileURL(resolve(providerPath)).href);
+const provider = await import(providerPath ? pathToFileURL(resolve(providerPath)).href : new URL('./nodeProvider.mjs', import.meta.url).href);
 const { postgres, redis } = provider;
 if (!postgres?.query || !postgres?.transaction || !redis?.command) throw new Error('Provider must export postgres.query, postgres.transaction and redis.command');
 
@@ -21,8 +19,7 @@ const batchId = `integration-${runId}`;
 const redisPrefix = `mtx:integration:${runId}`;
 
 try {
-  const schema = await readFile(new URL('../schema.sql', import.meta.url), 'utf8');
-  await postgres.query(schema, []);
+  await runMigrations(postgres);
 
   const anomalyId = randomUUID();
   await assert.rejects(() => postgres.transaction(async (database) => { await database.query('INSERT INTO mtx_anti_cheat_anomalies (id, user_id, anomaly_type, created_at) VALUES ($1, $2, $3, NOW())', [anomalyId, userId, 'integration_rollback']); throw new Error('ROLLBACK_PROBE'); }), /ROLLBACK_PROBE/);

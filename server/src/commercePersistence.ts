@@ -11,6 +11,7 @@ const purchaseRecord = (row: PurchaseRow): PurchaseRecord => ({ id: row.id, user
 const paymentRecord = (row: PaymentRow): PaymentRecord => ({ transactionId: row.transaction_id, userId: row.user_id, provider: row.provider, asset: row.asset, amount: Number(row.amount), creditedCoins: Number(row.credited_coins), status: row.status, createdAt: time(row.created_at) });
 
 export class PostgresCommercePersistence implements CommercePersistence {
+  readonly persistsGameState = true;
   private readonly database: PostgresQueries;
   constructor(database: PostgresQueries) { this.database = database; }
 

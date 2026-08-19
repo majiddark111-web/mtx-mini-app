@@ -4,7 +4,7 @@
 
 The frontend is React 18 with React Router, Zustand and Axios. Pages are lazy-loaded. UI components render state; hooks coordinate lifecycle behavior; services own HTTP, Telegram and wallet interactions; Zustand slices hold user, game, wallet and inventory state.
 
-The server core uses the standard `Request`/`Response` API in `server/src/app.ts`. `server/src/worker.ts` is the production composition root: it attaches Redis/PostgreSQL adapters, leaderboard pub/sub, WebSocket upgrades, payment verification and admin authentication. `server/localServer.mjs` is a development-only in-memory adapter.
+The server core uses the standard `Request`/`Response` API in `server/src/app.ts`. `server/src/worker.ts` is the production composition root and fails closed if Redis or PostgreSQL is absent. `server/productionServer.mjs` supplies pooled PostgreSQL and TLS Redis adapters for a Node host, health checks, periodic queue flushing and graceful shutdown. `server/localServer.mjs` remains development-only and in-memory.
 
 ## Authenticated request sequence
 

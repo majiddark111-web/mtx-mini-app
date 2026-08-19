@@ -69,7 +69,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     if (url.pathname.startsWith('/api/admin/')) {
       if (!env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) return json({ error: 'Admin authentication unavailable' }, 503, cors);
       const authorization = request.headers.get('authorization'); if (!authorization?.startsWith('Bearer ')) return json({ error: 'Forbidden' }, 403, cors); let admin; try { admin = await verifyAdminJwt(authorization.slice(7), env.ADMIN_JWT_SECRET); } catch { return json({ error: 'Forbidden' }, 403, cors); }
-      const users = gameStorage.hotStateSnapshot(); const payments = await commerceStorage.allPayments(); const snapshot = await adminStorage.snapshot();
+      const users = await gameStorage.stateSnapshot(); const payments = await commerceStorage.allPayments(); const snapshot = await adminStorage.snapshot();
       if (url.pathname === '/api/admin/dashboard' && request.method === 'GET') return json({ stats: { users: users.length, banned: snapshot.banned.length, payments: payments.length, confirmedRevenue: payments.filter((item) => item.status === 'confirmed').reduce((sum, item) => sum + item.amount, 0), totalCoins: users.reduce((sum, item) => sum + item.coins, 0) }, recentLogs: snapshot.logs.slice(0, 20) }, 200, cors);
       if (url.pathname === '/api/admin/users' && request.method === 'GET') return json({ users: await Promise.all(users.map(async (user) => ({ ...user, banned: await adminStorage.isBanned(user.userId) }))) }, 200, cors);
       if (url.pathname === '/api/admin/payments' && request.method === 'GET') return json({ payments }, 200, cors);

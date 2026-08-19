@@ -2,7 +2,7 @@ import { createGameState, type ServerGameState, type TapBatch } from './gameEngi
 
 export interface QueuedTapEvent { userId: string; batch: TapBatch; acceptedTaps: number; receivedAt: number; }
 export interface TapEventQueue { enqueue(event: QueuedTapEvent): Promise<void>; size(): number; drain(limit: number): Promise<QueuedTapEvent[]>; }
-export interface GameRepository { get(userId: string): Promise<ServerGameState | null>; save(state: ServerGameState): Promise<void>; }
+export interface GameRepository { get(userId: string): Promise<ServerGameState | null>; save(state: ServerGameState): Promise<void>; all(): Promise<ServerGameState[]>; }
 export interface BatchDeduplicator { claim(userId: string, batchId: string, now: number): Promise<boolean>; }
 
 export class MemoryBatchDeduplicator implements BatchDeduplicator {
@@ -27,6 +27,7 @@ export class MemoryGameRepository implements GameRepository {
   private states = new Map<string, ServerGameState>();
   async get(userId: string): Promise<ServerGameState | null> { return structuredClone(this.states.get(userId) ?? null); }
   async save(state: ServerGameState): Promise<void> { this.states.set(state.userId, structuredClone(state)); }
+  async all(): Promise<ServerGameState[]> { return structuredClone([...this.states.values()]); }
 }
 
 export class GameStorage {
@@ -43,7 +44,7 @@ export class GameStorage {
     this.hotStates.set(userId, structuredClone(state));
     return state;
   }
-  saveHot(state: ServerGameState): void { this.hotStates.set(state.userId, structuredClone(state)); this.dirtyUsers.add(state.userId); }
+  saveHot(state: ServerGameState, dirty = true): void { this.hotStates.set(state.userId, structuredClone(state)); if (dirty) this.dirtyUsers.add(state.userId); }
   async flushDirty(limit = 500): Promise<number> {
     const userIds = [...this.dirtyUsers].slice(0, Math.max(0, limit));
     for (const userId of userIds) {
@@ -55,4 +56,5 @@ export class GameStorage {
   }
   claimBatch(userId: string, batchId: string, now: number): Promise<boolean> { return this.batches.claim(userId, batchId, now); }
   hotStateSnapshot(): ServerGameState[] { return structuredClone([...this.hotStates.values()]); }
+  async stateSnapshot(): Promise<ServerGameState[]> { const stored = await this.repository.all(); const merged = new Map(stored.map((state) => [state.userId, state])); for (const state of this.hotStates.values()) merged.set(state.userId, state); return structuredClone([...merged.values()]); }
 }

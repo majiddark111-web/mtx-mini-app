@@ -11,6 +11,7 @@ export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'refunded';
 export interface PaymentRecord { transactionId: string; userId: string; provider: 'ton' | 'usdt'; asset: 'TON' | 'USDT'; amount: number; creditedCoins: number; status: PaymentStatus; createdAt: number; }
 
 export interface CommercePersistence {
+  readonly persistsGameState: boolean;
   inventory(userId: string): Promise<InventoryEntry[]>;
   purchaseHistory(userId: string): Promise<PurchaseRecord[]>;
   paymentHistory(userId: string): Promise<PaymentRecord[]>;
@@ -22,6 +23,7 @@ export interface CommercePersistence {
 }
 
 export class MemoryCommercePersistence implements CommercePersistence {
+  readonly persistsGameState = false;
   private inventories = new Map<string, InventoryEntry[]>();
   private purchases = new Map<string, PurchaseRecord>();
   private payments = new Map<string, PaymentRecord>();
@@ -80,7 +82,7 @@ export class CommerceStorage {
     const inventory = itemId.startsWith('upgrade:') ? undefined : { itemId, category: item.category, quantity: 1, acquiredAt: now };
     const created = await this.persistence.commitPurchase(record, state.version, updated, inventory);
     if (created.duplicate) { if (created.record.itemId !== itemId) throw new Error('IDEMPOTENCY_KEY_REUSED'); return { state, record: created.record, duplicate: true }; }
-    gameStorage.saveHot(updated);
+    gameStorage.saveHot(updated, !this.persistence.persistsGameState);
     return { state: updated, record: structuredClone(record), duplicate: false };
   }
 
@@ -88,7 +90,7 @@ export class CommerceStorage {
     const current = await gameStorage.stateFor(record.userId, now);
     const updated = record.status === 'confirmed' && record.creditedCoins > 0 ? { ...current, coins: current.coins + record.creditedCoins, version: current.version + 1 } : current;
     const outcome = await this.persistence.commitPayment(record, current.version, updated);
-    if (!outcome.duplicate && updated !== current) gameStorage.saveHot(updated);
+    if (!outcome.duplicate && updated !== current) gameStorage.saveHot(updated, !this.persistence.persistsGameState);
     return outcome;
   }
 }

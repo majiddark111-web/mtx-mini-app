@@ -45,6 +45,15 @@ describe('server-authoritative game engine', () => {
     assert.equal(repository.writes, 100);
   });
 
+  it('does not rewrite state already committed by a transactional persistence service', async () => {
+    class CountingRepository extends MemoryGameRepository { writes = 0; override async save(state: Parameters<MemoryGameRepository['save']>[0]): Promise<void> { this.writes += 1; await super.save(state); } }
+    const repository = new CountingRepository();
+    const storage = new GameStorage(repository);
+    storage.saveHot(createGameState('transactional-user', Date.now()), false);
+    assert.equal(await storage.flushDirty(), 0);
+    assert.equal(repository.writes, 0);
+  });
+
   it('routes load through the Redis adapter and batches PostgreSQL writes', async () => {
     class FakeRedis implements RedisCommands {
       commands = 0;

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { issueJwt } from './jwt.ts';
 import { LeaderboardGateway, type GatewaySocket, type LeaderboardPubSub } from './leaderboardGateway.ts';
 import { MemoryLeaderboardRepository } from './social.ts';
+import worker from './worker.ts';
 import { PostgresSocialPersistence } from './socialPersistence.ts';
 import type { PostgresQueries } from './productionStorage.ts';
 import { PostgresCommercePersistence } from './commercePersistence.ts';
@@ -11,6 +12,10 @@ import { createGameState } from './gameEngine.ts';
 import { PostgresAnomalyPersistence } from './antiCheatPersistence.ts';
 
 describe('phase 6 production infrastructure', () => {
+  it('fails closed when persistent infrastructure bindings are missing', async () => {
+    const response = await worker.fetch(new Request('https://api.mtx.test/api/session'), { TELEGRAM_BOT_TOKEN: 'test-token-value', JWT_SECRET: 'x'.repeat(32), APP_ORIGIN: 'https://mtx.test' });
+    assert.equal(response.status, 503);
+  });
   it('authenticates a websocket before subscribing and pushing rankings', async () => {
     const leaderboard = new MemoryLeaderboardRepository(); await leaderboard.record('1', 'MTX', 900);
     let listener: (() => void) | undefined; const pubsub: LeaderboardPubSub = { async subscribe(_channel, next) { listener = next; return () => { listener = undefined; }; } };

@@ -37,6 +37,7 @@ export class PostgresGameRepository implements GameRepository {
     const result = await this.database.query<{ user_id: string }>('INSERT INTO mtx_game_state (user_id, state, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (user_id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW() WHERE (mtx_game_state.state->>\'version\')::BIGINT < (EXCLUDED.state->>\'version\')::BIGINT RETURNING user_id', [state.userId, JSON.stringify(state)]);
     if (result.rows.length !== 1) throw new Error('STATE_VERSION_CONFLICT');
   }
+  async all(): Promise<ServerGameState[]> { const result = await this.database.query<{ state: ServerGameState }>('SELECT state FROM mtx_game_state ORDER BY updated_at DESC LIMIT 10000', []); return result.rows.map((row) => row.state); }
 }
 
 export async function flushTapEvents(queue: TapEventQueue, database: PostgresQueries, limit = 500): Promise<number> {
