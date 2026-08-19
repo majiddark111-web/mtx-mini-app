@@ -68,6 +68,8 @@ pnpm server:start
 
 Configure `/healthz` as the health-check path. The runtime persists dirty game state before returning, flushes queued tap events every five seconds and performs a final flush during graceful shutdown. Do not deploy `server/localServer.mjs` as the production runtime.
 
+The repository root includes `render.yaml` for a free Singapore staging service. Because Render's dedicated `preDeployCommand` is a paid-service feature, the free staging Blueprint runs the idempotent migration at the end of `buildCommand`. Move `pnpm db:migrate` to `preDeployCommand` before upgrading this Blueprint to a paid production service.
+
 Fetch-compatible platforms may still inject their own `REDIS` and `POSTGRES` bindings into `server/src/worker.ts`. Payment verification, WebSocket transport and administrator identity remain separate provider responsibilities.
 
 ## 5. Configure Telegram

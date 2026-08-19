@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: mtx-api-staging
+    runtime: node
+    plan: free
+    region: singapore
+    autoDeployTrigger: commit
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && pnpm db:migrate
+    startCommand: pnpm server:start
+    healthCheckPath: /healthz
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_JWT_SECRET
+        generateValue: true
+      - key: APP_ORIGIN
+        sync: false
+      - key: AUTH_MAX_AGE_SECONDS
+        value: 300
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: POSTGRES_SSL
+        value: true
+      - key: POSTGRES_TLS_REJECT_UNAUTHORIZED
+        value: true
+      - key: POSTGRES_POOL_MAX
+        value: 10
+      - key: POSTGRES_CONNECT_TIMEOUT_MS
+        value: 30000
+      - key: POSTGRES_IDLE_TIMEOUT_MS
+        value: 30000
+      - key: REDIS_CONNECT_TIMEOUT_MS
+        value: 30000
