@@ -5,7 +5,7 @@ services:
     plan: free
     region: singapore
     autoDeployTrigger: commit
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && pnpm db:migrate
+    buildCommand: pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && pnpm db:migrate
     startCommand: pnpm server:start
     healthCheckPath: /healthz
     envVars:
