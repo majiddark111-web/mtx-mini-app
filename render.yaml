@@ -5,8 +5,8 @@ services:
     plan: free
     region: singapore
     autoDeployTrigger: commit
-    buildCommand: pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && pnpm db:migrate
-    startCommand: pnpm server:start
+    buildCommand: pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && node server/migrate.mjs
+    startCommand: node --experimental-strip-types server/productionServer.mjs
     healthCheckPath: /healthz
     envVars:
       - key: NODE_ENV
