@@ -9,6 +9,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .hero, .page-card { background: linear-gradient(145deg, rgba(255,210,30,.12), rgba(255,255,255,.04)); border: 1px solid rgba(255,210,30,.25); border-radius: 28px; margin: 13vh auto 0; max-width: 640px; padding: 34px 26px; }
 .hero h1 { font-size: clamp(2.3rem, 11vw, 4rem); line-height: .98; margin: 18px 0; max-width: 520px; }
 .hero p, .page-card p, .muted { color: #aaa; line-height: 1.6; }
+.home-shortcuts { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 16px auto 0; max-width: 640px; }
+.home-shortcuts a { align-items: center; background: #151515; border: 1px solid #302c1b; border-radius: 16px; color: #eee; display: flex; gap: 10px; min-height: 62px; padding: 12px; text-decoration: none; }
+.home-shortcuts a:active { background: #211e12; transform: scale(.98); }
+.home-shortcuts span { font-size: 1.45rem; }
+.home-shortcuts strong { font-size: .82rem; }
 .phase-badge { background: rgba(255,210,30,.14); border: 1px solid rgba(255,210,30,.35); border-radius: 999px; color: #ffd21e; display: inline-block; font-size: .75rem; font-weight: 800; padding: 7px 10px; text-transform: uppercase; }
 .button { border: 0; border-radius: 12px; cursor: pointer; padding: 9px 14px; text-decoration: none; }
 .button.primary { background: #ffd21e; color: #111; font-weight: 800; }
