@@ -6,6 +6,7 @@ export interface Env {
   JWT_SECRET: string;
   APP_ORIGIN: string;
   AUTH_MAX_AGE_SECONDS?: string;
+  AUTH_LOG?: (message: string) => void;
   REDIS?: RedisCommands;
   POSTGRES?: PostgresQueries;
   ECONOMY_CONFIG?: { get(key: string): Promise<string | null> };

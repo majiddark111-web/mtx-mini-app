@@ -103,7 +103,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const maximumAge = Number(env.AUTH_MAX_AGE_SECONDS ?? '300');
       let user;
       try { user = await validateTelegramInitData(body.initData, env.TELEGRAM_BOT_TOKEN, maximumAge); }
-      catch { return json({ error: 'Unauthorized' }, 401, cors); }
+      catch (error) { env.AUTH_LOG?.(error instanceof Error ? error.message : 'Telegram authentication failed'); return json({ error: 'Unauthorized' }, 401, cors); }
       const nowSeconds = Math.floor(Date.now() / 1_000);
       const token = await issueJwt(user, env.JWT_SECRET, 900, nowSeconds);
       const sessionKey = await deriveSessionKey({ sub: user.id, iat: nowSeconds }, env.JWT_SECRET);

@@ -21,6 +21,7 @@ const environment = {
   ADMIN_JWT_SECRET: process.env.ADMIN_JWT_SECRET,
   APP_ORIGIN: appOrigin,
   AUTH_MAX_AGE_SECONDS: process.env.AUTH_MAX_AGE_SECONDS?.trim() ?? '300',
+  AUTH_LOG: (message) => process.stderr.write(`Telegram authentication rejected: ${message}\n`),
   POSTGRES: infrastructure.postgres,
   REDIS: infrastructure.redis,
 };
