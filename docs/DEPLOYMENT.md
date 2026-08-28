@@ -77,8 +77,9 @@ Fetch-compatible platforms may still inject their own `REDIS` and `POSTGRES` bin
 1. Set the Mini App URL in BotFather to the HTTPS frontend.
 2. Ensure `APP_ORIGIN` exactly matches that origin.
 3. Update `public/tonconnect-manifest.json` with final production URLs and icons.
-4. Open `https://t.me/MTXGameBot?startapp` (replace with the real username).
-5. Confirm forged/expired initData is rejected before enabling rewards.
+4. Set `VITE_TELEGRAM_BOT_USERNAME` on the frontend to the username without `@` (for staging: `TOKXTAPBOT`).
+5. Open `https://t.me/TOKXTAPBOT?startapp` and verify the configured bot launches the Mini App.
+6. Confirm forged/expired initData is rejected before enabling rewards.
 
 ## 6. Release gates
 

@@ -25,3 +25,11 @@ export function openExternalLink(url: string): void {
   else window.open(url, '_blank', 'noopener,noreferrer');
 }
 export function hapticTap(): void { const feedback = getTelegramApp()?.HapticFeedback; if (feedback) feedback.impactOccurred('light'); else if ('vibrate' in navigator) navigator.vibrate(10); }
+
+export function telegramStartAppLink(startParameter?: string): string {
+  const configured = String(import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'TOKXTAPBOT').replace(/^@/, '');
+  const username = /^[A-Za-z0-9_]{5,32}$/.test(configured) ? configured : 'TOKXTAPBOT';
+  const url = new URL(`https://t.me/${username}`);
+  if (startParameter) url.searchParams.set('startapp', startParameter);
+  return url.toString();
+}
