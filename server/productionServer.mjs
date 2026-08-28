@@ -1,24 +1,30 @@
 import process from 'node:process';
 import worker from './src/worker.ts';
+import { validateEnv } from './src/app.ts';
 import { createNodeInfrastructure } from './nodeInfrastructure.mjs';
 import { closeHttpServer, startFetchServer } from './nodeHttp.mjs';
 
 const required = (name) => {
-  const value = process.env[name];
+  const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
   return value;
 };
 
 const infrastructure = await createNodeInfrastructure(process.env);
+const appOriginValue = required('APP_ORIGIN');
+let appOrigin;
+try { appOrigin = new URL(appOriginValue).origin; }
+catch { throw new Error('APP_ORIGIN must be a valid absolute URL'); }
 const environment = {
   TELEGRAM_BOT_TOKEN: required('TELEGRAM_BOT_TOKEN'),
   JWT_SECRET: required('JWT_SECRET'),
   ADMIN_JWT_SECRET: process.env.ADMIN_JWT_SECRET,
-  APP_ORIGIN: required('APP_ORIGIN'),
-  AUTH_MAX_AGE_SECONDS: process.env.AUTH_MAX_AGE_SECONDS ?? '300',
+  APP_ORIGIN: appOrigin,
+  AUTH_MAX_AGE_SECONDS: process.env.AUTH_MAX_AGE_SECONDS?.trim() ?? '300',
   POSTGRES: infrastructure.postgres,
   REDIS: infrastructure.redis,
 };
+validateEnv(environment);
 const port = Number(process.env.PORT ?? '3000');
 if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) throw new Error('PORT is invalid');
 

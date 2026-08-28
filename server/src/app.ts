@@ -34,7 +34,7 @@ function corsHeaders(request: Request, env: Env): HeadersInit {
   return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type, x-mtx-timestamp, x-mtx-nonce, x-mtx-signature', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
 }
 
-function validateEnv(env: Env): void {
+export function validateEnv(env: Env): void {
   if (env.TELEGRAM_BOT_TOKEN.length < 10) throw new Error('TELEGRAM_BOT_TOKEN is not configured');
   if (env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET must contain at least 32 characters');
   if (!/^https?:\/\//.test(env.APP_ORIGIN)) throw new Error('APP_ORIGIN is not configured');
