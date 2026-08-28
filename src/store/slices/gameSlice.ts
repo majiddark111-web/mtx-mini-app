@@ -5,7 +5,7 @@ import type { GameState, UpgradeType } from '../../types/game';
 
 export interface GameSlice extends GameState {
   tap: () => void;
-  recharge: () => void;
+  recharge: (amount?: number) => void;
   buyUpgrade: (type: UpgradeType) => boolean;
   setServerGameState: (state: { coins: number; energy: number; maximumEnergy: number; profitPerTap: number }) => void;
 }
@@ -14,7 +14,7 @@ const initial = loadGameState();
 export const createGameSlice: StateCreator<GameSlice, [], [], GameSlice> = (set) => ({
   ...initial,
   tap: () => set((state) => state.energy <= 0 ? state : { score: state.score + state.tapPower, energy: state.energy - 1 }),
-  recharge: () => set((state) => state.energy >= state.maxEnergy ? state : { energy: state.energy + 1 }),
+  recharge: (amount = 1) => set((state) => state.energy >= state.maxEnergy ? state : { energy: Math.min(state.maxEnergy, state.energy + Math.max(0, Math.floor(amount))) }),
   setServerGameState: (state) => set({ score: state.coins, energy: state.energy, maxEnergy: state.maximumEnergy, tapPower: state.profitPerTap }),
   buyUpgrade: (type) => {
     let purchased = false;

@@ -1,17 +1,21 @@
 import { useEffect } from 'react';
-import { getRechargeInterval } from '../services/gameService';
 import { useAppStore } from '../store/useAppStore';
 
 export function useEnergyRecharge(): void {
-  const energy = useAppStore((state) => state.energy);
-  const maxEnergy = useAppStore((state) => state.maxEnergy);
-  const energyLevel = useAppStore((state) => state.energyLevel);
-  const authStatus = useAppStore((state) => state.authStatus);
   const recharge = useAppStore((state) => state.recharge);
   useEffect(() => {
-    if (energy >= maxEnergy) return undefined;
-    const interval = authStatus === 'authenticated' ? 1_000 : getRechargeInterval({ energy, maxEnergy, energyLevel });
-    const timer = window.setTimeout(recharge, interval);
-    return () => window.clearTimeout(timer);
-  }, [authStatus, energy, maxEnergy, energyLevel, recharge]);
+    let lastRechargeAt = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      const { energy, maxEnergy } = useAppStore.getState();
+      if (energy >= maxEnergy) { lastRechargeAt = now; return; }
+      const elapsedSeconds = Math.floor((now - lastRechargeAt) / 1_000);
+      if (elapsedSeconds < 1) return;
+      lastRechargeAt += elapsedSeconds * 1_000;
+      recharge(elapsedSeconds);
+    };
+    const timer = window.setInterval(tick, 1_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', tick); };
+  }, [recharge]);
 }

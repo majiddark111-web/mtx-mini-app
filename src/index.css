@@ -26,9 +26,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .profile-row img { border-radius: 50%; height: 40px; object-fit: cover; width: 40px; }
 .tap-zone { align-items: center; display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
 .score { color: #ffd21e; font-size: 1.4rem; }
-.coin-button { background: transparent; border: 0; border-radius: 50%; cursor: pointer; height: min(72vw, 300px); padding: 0; transition: transform .1s ease; width: min(72vw, 300px); }
+.coin-button { -webkit-appearance: none; -webkit-tap-highlight-color: transparent; background: transparent; border: 0; border-radius: 50%; cursor: pointer; height: min(72vw, 300px); outline: 0; padding: 0; touch-action: manipulation; transition: transform .1s ease; user-select: none; width: min(72vw, 300px); }
+.coin-button:focus, .coin-button:focus-visible { box-shadow: none; outline: 0; }
 .coin-button:active { transform: scale(.94); }
-.coin-button img { height: 100%; object-fit: contain; width: 100%; }
+.coin-button img { -webkit-user-drag: none; display: block; height: 100%; object-fit: contain; pointer-events: none; user-select: none; width: 100%; }
 .energy-track { background: #333; border-radius: 10px; box-shadow: 0 0 10px #ffd21e; height: 18px; overflow: hidden; width: min(76vw, 320px); }
 .energy-track div, .progress div { animation: shine 3s linear infinite; background: linear-gradient(90deg, #ffd21e, #ffb84d, #ffd21e); background-size: 300% 100%; height: 100%; transition: width .3s ease; }
 .game-actions { background: rgba(25,25,25,.94); border: 1px solid #333; border-radius: 20px; display: grid; gap: 8px; grid-template-columns: 1fr 1fr; max-width: 360px; padding: 9px; width: 100%; }
