@@ -3,7 +3,7 @@ import type { TelegramUser, TelegramWebApp } from '../types/telegram';
 export function getTelegramApp(): TelegramWebApp | undefined { return window.Telegram?.WebApp; }
 export function getTelegramUser(): TelegramUser | undefined { return getTelegramApp()?.initDataUnsafe?.user; }
 export function getTelegramInitData(): string { return getTelegramApp()?.initData ?? ''; }
-export async function waitForTelegramApp(timeoutMs = 1_500): Promise<void> {
+export async function waitForTelegramApp(timeoutMs = 10_000): Promise<void> {
   const startedAt = Date.now();
   while (!getTelegramApp() && Date.now() - startedAt < timeoutMs) await new Promise((resolve) => window.setTimeout(resolve, 50));
 }
