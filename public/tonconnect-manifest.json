@@ -1,7 +1,5 @@
 {
-  "url": "https://play.example.com",
+  "url": "https://mtx-web-staging-majid111.onrender.com",
   "name": "MTX",
-  "iconUrl": "https://play.example.com/mtx.png",
-  "termsOfUseUrl": "https://play.example.com/terms",
-  "privacyPolicyUrl": "https://play.example.com/privacy"
+  "iconUrl": "https://mtx-web-staging-majid111.onrender.com/mtx.png"
 }
