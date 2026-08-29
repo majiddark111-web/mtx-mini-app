@@ -13,6 +13,8 @@ services:
         value: production
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        value: TOKXTAPBOT
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_JWT_SECRET

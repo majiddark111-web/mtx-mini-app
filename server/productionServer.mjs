@@ -3,6 +3,7 @@ import worker from './src/worker.ts';
 import { validateEnv } from './src/app.ts';
 import { createNodeInfrastructure } from './nodeInfrastructure.mjs';
 import { closeHttpServer, startFetchServer } from './nodeHttp.mjs';
+import { verifyTelegramBotIdentity } from './botIdentity.mjs';
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -11,12 +12,16 @@ const required = (name) => {
 };
 
 const infrastructure = await createNodeInfrastructure(process.env);
+const telegramBotToken = required('TELEGRAM_BOT_TOKEN');
+const telegramBotUsername = required('TELEGRAM_BOT_USERNAME');
+const telegramBot = await verifyTelegramBotIdentity(telegramBotToken, telegramBotUsername);
+process.stdout.write(`Telegram bot identity verified: @${telegramBot.username} (id ${telegramBot.id})\n`);
 const appOriginValue = required('APP_ORIGIN');
 let appOrigin;
 try { appOrigin = new URL(appOriginValue).origin; }
 catch { throw new Error('APP_ORIGIN must be a valid absolute URL'); }
 const environment = {
-  TELEGRAM_BOT_TOKEN: required('TELEGRAM_BOT_TOKEN'),
+  TELEGRAM_BOT_TOKEN: telegramBotToken,
   JWT_SECRET: required('JWT_SECRET'),
   ADMIN_JWT_SECRET: process.env.ADMIN_JWT_SECRET,
   APP_ORIGIN: appOrigin,
