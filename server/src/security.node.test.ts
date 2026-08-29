@@ -94,6 +94,22 @@ describe('Telegram authentication security', () => {
     assert.equal(payload.state.coins, 0);
   });
 
+  it('updates the leaderboard after accepted taps and keeps the Telegram username', async () => {
+    const login = await handleRequest(authRequest(await signedInitData()), env);
+    const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };
+    const gameStorage = new GameStorage();
+    const socialStorage = new (await import('./social.ts')).SocialStorage();
+    const tap = await signedRequest('https://api.mtx.test/api/game/taps', token, sessionKey, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taps: 2, durationMs: 1_000, batchId: 'leaderboard-taps-0001' }),
+    });
+    assert.equal((await handleRequestWithStorage(tap, env, gameStorage, undefined, socialStorage)).status, 200);
+    const board = await signedRequest('https://api.mtx.test/api/leaderboard', token, sessionKey);
+    const response = await handleRequestWithStorage(board, env, gameStorage, undefined, socialStorage);
+    const payload = await response.json() as { entries: Array<{ username: string; coins: number }> };
+    assert.equal(payload.entries[0].username, 'tester');
+    assert.equal(payload.entries[0].coins, 2);
+  });
+
   it('does not charge twice when a coin purchase is replayed', async () => {
     const login = await handleRequest(authRequest(await signedInitData()), env);
     const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };
