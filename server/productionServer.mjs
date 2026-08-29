@@ -14,8 +14,12 @@ const required = (name) => {
 const infrastructure = await createNodeInfrastructure(process.env);
 const telegramBotToken = required('TELEGRAM_BOT_TOKEN');
 const telegramBotUsername = required('TELEGRAM_BOT_USERNAME');
-const telegramBot = await verifyTelegramBotIdentity(telegramBotToken, telegramBotUsername);
-process.stdout.write(`Telegram bot identity verified: @${telegramBot.username} (id ${telegramBot.id})\n`);
+try {
+  const telegramBot = await verifyTelegramBotIdentity(telegramBotToken, telegramBotUsername);
+  process.stdout.write(`Telegram bot identity verified: @${telegramBot.username} (id ${telegramBot.id})\n`);
+} catch (error) {
+  process.stderr.write(`Telegram bot identity diagnostic failed: ${error instanceof Error ? error.message : 'unknown error'}\n`);
+}
 const appOriginValue = required('APP_ORIGIN');
 let appOrigin;
 try { appOrigin = new URL(appOriginValue).origin; }

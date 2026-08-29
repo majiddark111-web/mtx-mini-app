@@ -31,4 +31,12 @@ describe('Telegram bot identity verification', () => {
       /was rejected by Telegram/,
     );
   });
+
+  it('reports a sanitized network failure reason', async () => {
+    const networkError = new TypeError('fetch failed', { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } });
+    await assert.rejects(
+      verifyTelegramBotIdentity('secret-token', 'TOKXTAPBOT', async () => { throw networkError; }),
+      /UND_ERR_CONNECT_TIMEOUT/,
+    );
+  });
 });

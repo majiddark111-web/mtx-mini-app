@@ -20,6 +20,16 @@ describe('phase 6 social systems', () => {
     assert.equal((await game.stateFor('1', Date.now())).coins, 500); assert.equal((await game.stateFor('2', Date.now())).coins, 250);
   });
 
+  it('credits a referral only once when the same account retries it', async () => {
+    const social = new SocialStorage(); const game = new GameStorage(); const now = Date.now();
+    await social.acceptReferral('2', 'MTX-1', 'a'.repeat(64), game, now);
+    await assert.rejects(() => social.acceptReferral('2', 'MTX-1', 'b'.repeat(64), game, now + 1), /REFERRAL_ALREADY_USED/);
+    assert.equal((await social.referralStatus('1')).invited, 1);
+    assert.equal((await social.referralStatus('1')).earned, 500);
+    assert.equal((await game.stateFor('1', now)).coins, 500);
+    assert.equal((await game.stateFor('2', now)).coins, 250);
+  });
+
   it('claims only completed missions once', async () => {
     const social = new SocialStorage(); const game = new GameStorage(); const state = await game.stateFor('1', Date.now()); game.saveHot({ ...state, xp: 500 });
     assert.equal((await social.claimMission('1', 'daily-taps', game, Date.now())).reward, 300);

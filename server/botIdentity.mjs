@@ -10,8 +10,11 @@ export async function verifyTelegramBotIdentity(botToken, expectedUsername, fetc
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(10_000),
     });
-  } catch {
-    throw new Error('Telegram Bot API could not be reached while verifying the bot token');
+  } catch (error) {
+    const reason = error instanceof Error && error.cause && typeof error.cause === 'object' && 'code' in error.cause
+      ? String(error.cause.code)
+      : error instanceof Error ? error.name : 'unknown';
+    throw new Error(`Telegram Bot API could not be reached while verifying the bot token (${reason})`);
   }
 
   let payload;
