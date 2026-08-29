@@ -12,7 +12,7 @@
     "build": "vite build --configLoader native",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
-    "test": "node --test src/services/gameService.node.test.ts server/src/*.node.test.ts server/*.node.test.mjs",
+    "test": "node --test src/services/*.node.test.ts server/src/*.node.test.ts server/*.node.test.mjs",
     "test:integration": "node --experimental-strip-types server/integration/run.mjs",
     "server:check": "tsc -p server/tsconfig.json",
     "check": "tsc && tsc -p server/tsconfig.json"

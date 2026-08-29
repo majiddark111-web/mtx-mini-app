@@ -1,6 +1,6 @@
 const normalizedUsername = (value) => String(value ?? '').trim().replace(/^@/, '').toLowerCase();
 
-export async function verifyTelegramBotIdentity(botToken, expectedUsername, fetchImplementation = fetch) {
+export async function verifyTelegramBotIdentity(botToken, expectedUsername, fetchImplementation = globalThis.fetch) {
   const expected = normalizedUsername(expectedUsername);
   if (!expected) throw new Error('TELEGRAM_BOT_USERNAME is required');
 
@@ -8,7 +8,7 @@ export async function verifyTelegramBotIdentity(botToken, expectedUsername, fetc
   try {
     response = await fetchImplementation(`https://api.telegram.org/bot${botToken}/getMe`, {
       headers: { accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
+      signal: globalThis.AbortSignal.timeout(10_000),
     });
   } catch (error) {
     const reason = error instanceof Error && error.cause && typeof error.cause === 'object' && 'code' in error.cause
