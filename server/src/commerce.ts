@@ -18,6 +18,7 @@ export interface CommercePersistence {
   allPayments(): Promise<PaymentRecord[]>;
   purchase(userId: string, idempotencyKey: string): Promise<PurchaseRecord | undefined>;
   commitPurchase(record: PurchaseRecord, previousVersion: number, state: ServerGameState, inventory?: InventoryEntry): Promise<{ record: PurchaseRecord; duplicate: boolean }>;
+  consumeInventory(userId: string, itemId: string, previousVersion: number, state: ServerGameState): Promise<void>;
   payment(transactionId: string): Promise<PaymentRecord | undefined>;
   commitPayment(record: PaymentRecord, previousVersion: number, state: ServerGameState): Promise<{ record: PaymentRecord; duplicate: boolean }>;
 }
@@ -33,6 +34,7 @@ export class MemoryCommercePersistence implements CommercePersistence {
   async allPayments(): Promise<PaymentRecord[]> { return structuredClone([...this.payments.values()]); }
   async purchase(userId: string, idempotencyKey: string): Promise<PurchaseRecord | undefined> { const record = this.purchases.get(`${userId}:${idempotencyKey}`); return record && structuredClone(record); }
   async commitPurchase(record: PurchaseRecord, previousVersion: number, state: ServerGameState, entry?: InventoryEntry): Promise<{ record: PurchaseRecord; duplicate: boolean }> { void previousVersion; void state; const key = `${record.userId}:${record.idempotencyKey}`; const existing = this.purchases.get(key); if (existing) return { record: structuredClone(existing), duplicate: true }; this.purchases.set(key, structuredClone(record)); if (entry) { const entries = this.inventories.get(record.userId) ?? []; const owned = entries.find((candidate) => candidate.itemId === entry.itemId); if (owned) owned.quantity += entry.quantity; else entries.push(structuredClone(entry)); this.inventories.set(record.userId, entries); } return { record: structuredClone(record), duplicate: false }; }
+  async consumeInventory(userId: string, itemId: string, previousVersion: number, state: ServerGameState): Promise<void> { void previousVersion; void state; const entries = this.inventories.get(userId) ?? []; const owned = entries.find((entry) => entry.itemId === itemId); if (!owned || owned.quantity < 1) throw new Error('ITEM_NOT_OWNED'); owned.quantity -= 1; if (owned.quantity === 0) this.inventories.set(userId, entries.filter((entry) => entry !== owned)); }
   async payment(transactionId: string): Promise<PaymentRecord | undefined> { const record = this.payments.get(transactionId); return record && structuredClone(record); }
   async commitPayment(record: PaymentRecord, previousVersion: number, state: ServerGameState): Promise<{ record: PaymentRecord; duplicate: boolean }> { void previousVersion; void state; const existing = this.payments.get(record.transactionId); if (existing) return { record: structuredClone(existing), duplicate: true }; this.payments.set(record.transactionId, structuredClone(record)); return { record: structuredClone(record), duplicate: false }; }
 }
@@ -48,7 +50,7 @@ export function catalogFor(state: ServerGameState, economy: EconomyConfig, inven
   const owned = new Set(inventory.map((entry) => entry.itemId));
   return [...dynamic,
     { id: 'skin:aurora', category: 'skin', title: 'Aurora Skin', description: 'MTX aurora coin appearance', price: economy.upgrades.tap.baseCost * 3, featured: true, limited: true, owned: owned.has('skin:aurora') },
-    { id: 'boost:recharge', category: 'boost', title: 'Recharge Boost', description: 'Inventory boost for a future timed activation', price: economy.upgrades.energy.baseCost, featured: false, limited: false, owned: false },
+    { id: 'boost:recharge', category: 'boost', title: 'Recharge Boost', description: 'Refill energy to maximum once when activated', price: economy.upgrades.energy.baseCost, featured: false, limited: false, owned: false },
     { id: 'consumable:energy', category: 'consumable', title: 'Energy Cell', description: 'Consumable reserved for Phase 5 activation rules', price: Math.ceil(economy.upgrades.energy.baseCost / 3), featured: false, limited: false, owned: false },
   ];
 }
@@ -92,5 +94,14 @@ export class CommerceStorage {
     const outcome = await this.persistence.commitPayment(record, current.version, updated);
     if (!outcome.duplicate && updated !== current) gameStorage.saveHot(updated, !this.persistence.persistsGameState);
     return outcome;
+  }
+
+  async activate(userId: string, itemId: 'boost:recharge', gameStorage: GameStorage, now: number): Promise<{ state: ServerGameState; items: InventoryEntry[] }> {
+    const current = await gameStorage.stateFor(userId, now);
+    if (current.energy >= current.maximumEnergy) throw new Error('BOOST_NOT_NEEDED');
+    const updated = { ...current, energy: current.maximumEnergy, lastEnergyAt: now, lastSeenAt: now, version: current.version + 1 };
+    await this.persistence.consumeInventory(userId, itemId, current.version, updated);
+    gameStorage.saveHot(updated, !this.persistence.persistsGameState);
+    return { state: updated, items: await this.inventory(userId) };
   }
 }

@@ -6,7 +6,7 @@ import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } 
 import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
 import { catalogFor, CommerceStorage } from './commerce.ts';
-import { paymentConfirmationSchema, paymentIntentSchema, purchaseSchema } from './schema.ts';
+import { inventoryActivationSchema, paymentConfirmationSchema, paymentIntentSchema, purchaseSchema } from './schema.ts';
 import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
 import { challengeClaimSchema } from './schema.ts';
 import { SocialStorage } from './social.ts';
@@ -176,6 +176,12 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       return json({ items: await commerceStorage.inventory(userId), purchases: await commerceStorage.purchaseHistory(userId) }, 200, cors);
     }
+    if (url.pathname === '/api/inventory/activate' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const body = inventoryActivationSchema.parse(await request.json());
+      return json(await commerceStorage.activate(userId, body.itemId, gameStorage, Date.now()), 200, cors);
+    }
     if (url.pathname === '/api/wallet/transactions' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
       const userId = await authenticatedUserId(request, env);
@@ -243,7 +249,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
   } catch (error) {
     if (error instanceof ValidationError || error instanceof SyntaxError) return json({ error: 'Invalid request' }, 400, cors);
     if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') return json({ error: 'Insufficient coins' }, 402, cors);
-    if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'PRICE_CHANGED' || error.message === 'STATE_VERSION_CONFLICT' || error.message === 'IDEMPOTENCY_KEY_REUSED')) return json({ error: 'Conflict' }, 409, cors);
+    if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'ITEM_NOT_OWNED' || error.message === 'BOOST_NOT_NEEDED' || error.message === 'PRICE_CHANGED' || error.message === 'STATE_VERSION_CONFLICT' || error.message === 'IDEMPOTENCY_KEY_REUSED')) return json({ error: error.message === 'BOOST_NOT_NEEDED' ? 'Energy is already full' : 'Conflict' }, 409, cors);
     if (error instanceof Error && (error.message.startsWith('MISSION_') || error.message.startsWith('DAILY_') || error.message.startsWith('REFERRAL_') || error.message.startsWith('CHALLENGE_'))) return json({ error: error.message }, 409, cors);
     return json({ error: 'Internal server error' }, 500, cors);
   }

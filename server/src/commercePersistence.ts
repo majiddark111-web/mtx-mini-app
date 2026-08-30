@@ -51,6 +51,16 @@ export class PostgresCommercePersistence implements CommercePersistence {
     });
   }
 
+  async consumeInventory(userId: string, itemId: string, previousVersion: number, state: ServerGameState): Promise<void> {
+    await this.inTransaction(async (database) => {
+      await this.lockAndSaveState(database, state, previousVersion);
+      const owned = await database.query<{ quantity: number }>('SELECT quantity FROM mtx_inventory WHERE user_id = $1 AND item_id = $2 FOR UPDATE', [userId, itemId]);
+      if (Number(owned.rows[0]?.quantity ?? 0) < 1) throw new Error('ITEM_NOT_OWNED');
+      await database.query('UPDATE mtx_inventory SET quantity = quantity - 1 WHERE user_id = $1 AND item_id = $2', [userId, itemId]);
+      await database.query('DELETE FROM mtx_inventory WHERE user_id = $1 AND item_id = $2 AND quantity = 0', [userId, itemId]);
+    });
+  }
+
   async payment(transactionId: string): Promise<PaymentRecord | undefined> {
     const result = await this.database.query<PaymentRow>('SELECT transaction_id, user_id, provider, asset, amount, credited_coins, status, created_at FROM mtx_payments WHERE transaction_id = $1', [transactionId]);
     return result.rows[0] && paymentRecord(result.rows[0]);
