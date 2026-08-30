@@ -20,10 +20,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .button.ghost { background: transparent; border: 1px solid #444; color: #ddd; }
 .button:disabled { cursor: not-allowed; opacity: .45; }
 .launch { display: inline-block; margin-top: 12px; padding: 13px 20px; }
-.bottom-nav { backdrop-filter: blur(16px); background: rgba(20,20,20,.94); border: 1px solid #292929; border-radius: 22px 22px 0 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); left: 50%; max-width: 650px; padding: 10px 8px; position: fixed; transform: translateX(-50%); width: 100%; z-index: 20; }
+.bottom-nav { backdrop-filter: blur(16px); background: rgba(20,20,20,.94); border: 1px solid #292929; border-radius: 22px 22px 0 0; bottom: 0; display: grid; grid-template-columns: repeat(6, 1fr); left: 50%; max-width: 650px; padding: 10px 4px; position: fixed; transform: translateX(-50%); width: 100%; z-index: 20; }
 .bottom-nav a { align-items: center; color: #999; display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
 .bottom-nav a.active { color: #ffd21e; }
 .bottom-nav span { font-size: 1.25rem; }
+.bottom-nav small { font-size: .66rem; }
 .game-screen { height: 100dvh; overflow: hidden; position: relative; }
 .galaxy { animation: move-background 120s linear infinite; background: url('/galaxy.png') repeat center/cover; inset: 0; opacity: .32; position: absolute; }
 .game-content { align-items: center; display: flex; flex-direction: column; height: 100%; justify-content: space-between; padding: 20px; position: relative; z-index: 2; }
