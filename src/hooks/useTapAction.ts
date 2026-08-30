@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { syncTapBatch } from '../services/gameApiService';
 import { hapticTap } from '../services/telegramService';
 import { acknowledgeTapBatch, appendTap, nextTapBatch, sealActiveBatch, tapBatchDuration } from '../services/tapOutboxService';
+import { runTapSync } from '../services/tapSyncCoordinator';
 import { useAppStore } from '../store/useAppStore';
 
 const SYNC_INTERVAL_MS = 2_000;
@@ -19,7 +20,7 @@ export function useTapAction(): () => void {
     if (!batch) return;
     syncing.current = true;
     let acknowledged = false;
-    try { setServerGameState(await syncTapBatch(batch.taps, tapBatchDuration(batch), batch.batchId)); acknowledgeTapBatch(localStorage, userId, batch.batchId); acknowledged = true; }
+    try { setServerGameState(await runTapSync(() => syncTapBatch(batch.taps, tapBatchDuration(batch), batch.batchId))); acknowledgeTapBatch(localStorage, userId, batch.batchId); acknowledged = true; }
     catch { /* The exact batch remains durable and is retried with the same id. */ }
     finally { syncing.current = false; if (acknowledged && nextTapBatch(localStorage, userId)) void flush(); }
   }, [authStatus, setServerGameState, userId]);
