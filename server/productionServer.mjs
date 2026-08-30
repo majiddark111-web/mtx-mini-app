@@ -4,6 +4,7 @@ import { validateEnv } from './src/app.ts';
 import { createNodeInfrastructure } from './nodeInfrastructure.mjs';
 import { closeHttpServer, startFetchServer } from './nodeHttp.mjs';
 import { verifyTelegramBotIdentity } from './botIdentity.mjs';
+import { createTonPaymentVerifier } from './tonPaymentVerifier.mjs';
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -33,6 +34,16 @@ const environment = {
   AUTH_LOG: (message) => process.stderr.write(`Telegram authentication rejected: ${message}\n`),
   POSTGRES: infrastructure.postgres,
   REDIS: infrastructure.redis,
+  TON_TREASURY_ADDRESS: required('TON_TREASURY_ADDRESS'),
+  TON_PAYMENT_AMOUNT_NANO: Number(process.env.TON_PAYMENT_AMOUNT_NANO ?? '10000000'),
+  TON_PAYMENT_CREDIT_MTX: Number(process.env.TON_PAYMENT_CREDIT_MTX ?? '100'),
+  PAYMENT_VERIFIER: createTonPaymentVerifier({
+    apiKey: required('TONCENTER_API_KEY'),
+    baseUrl: process.env.TONCENTER_BASE_URL?.trim() || 'https://testnet.toncenter.com',
+    treasuryAddress: required('TON_TREASURY_ADDRESS'),
+    amountNano: Number(process.env.TON_PAYMENT_AMOUNT_NANO ?? '10000000'),
+    creditedCoins: Number(process.env.TON_PAYMENT_CREDIT_MTX ?? '100'),
+  }),
 };
 validateEnv(environment);
 const port = Number(process.env.PORT ?? '3000');

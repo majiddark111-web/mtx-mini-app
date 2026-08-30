@@ -42,9 +42,10 @@ Tap batches above 15 taps/second are rejected and flagged. The client normally s
 | POST | `/api/store/purchase` | Idempotent `{ itemId, idempotencyKey }` coin purchase |
 | GET | `/api/inventory` | Owned items and purchase history |
 | GET | `/api/wallet/transactions` | Payment history |
+| POST | `/api/wallet/payments/intents` | Create a user-bound, 15-minute TON payment order in Redis |
 | POST | `/api/wallet/payments/confirm` | Verify provider transaction server-side |
 
-Payment confirmation body contains `provider`, `transactionId`, `amount` and `asset`. A transaction ID can credit only once.
+The Testnet flow embeds the server-issued order ID in the TON message, then matches sender, treasury, amount and order through TON Center. A transaction ID can credit only once. USDT remains disabled until its Jetton contract and verification rules are configured.
 
 ## Social
 

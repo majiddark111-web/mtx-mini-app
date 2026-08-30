@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from './types.ts';
+import { Address } from '@ton/core';
 
 export class ValidationError extends Error {}
 
@@ -56,6 +57,16 @@ export const paymentConfirmationSchema: Schema<{ provider: 'ton' | 'usdt'; trans
     if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0 || body.amount > 1_000_000) throw new ValidationError('Invalid amount');
     if (body.asset !== 'TON' && body.asset !== 'USDT') throw new ValidationError('Invalid asset');
     return { provider: body.provider, transactionId: body.transactionId, amount: body.amount, asset: body.asset };
+  },
+};
+
+export const paymentIntentSchema: Schema<{ sourceAddress: string }> = {
+  parse(value) {
+    if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
+    const body = value as Record<string, unknown>;
+    if (Object.keys(body).some((key) => key !== 'sourceAddress') || typeof body.sourceAddress !== 'string' || body.sourceAddress.length < 48 || body.sourceAddress.length > 80) throw new ValidationError('Invalid wallet address');
+    try { Address.parse(body.sourceAddress); } catch { throw new ValidationError('Invalid wallet address'); }
+    return { sourceAddress: body.sourceAddress };
   },
 };
 

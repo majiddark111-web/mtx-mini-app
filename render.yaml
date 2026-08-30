@@ -27,6 +27,16 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
+      - key: TONCENTER_API_KEY
+        sync: false
+      - key: TONCENTER_BASE_URL
+        value: https://testnet.toncenter.com
+      - key: TON_TREASURY_ADDRESS
+        value: 0QD5l1aVXwQxVyvdvv_cAXEH89_9PI8blYMPElwWMQP27wKh
+      - key: TON_PAYMENT_AMOUNT_NANO
+        value: 10000000
+      - key: TON_PAYMENT_CREDIT_MTX
+        value: 100
       - key: POSTGRES_SSL
         value: true
       - key: POSTGRES_TLS_REJECT_UNAUTHORIZED

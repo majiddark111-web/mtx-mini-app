@@ -29,7 +29,11 @@ pnpm db:migrate
 | `POSTGRES_POOL_MAX` | optional | Maximum PostgreSQL pool size; defaults to `10` |
 | `POSTGRES_TLS_REJECT_UNAUTHORIZED` | optional | Keep `true`; disable only for a controlled private CA |
 | `ECONOMY_CONFIG` | recommended | Runtime configuration provider with `get(key)` |
-| `PAYMENT_VERIFIER` | payments | Server-side TON/USDT verification interface |
+| `TONCENTER_API_KEY` | TON payments | Server-only TON Center key for the selected network |
+| `TONCENTER_BASE_URL` | TON payments | Testnet: `https://testnet.toncenter.com` |
+| `TON_TREASURY_ADDRESS` | TON payments | Public recipient address; never a seed or private key |
+| `TON_PAYMENT_AMOUNT_NANO` | TON payments | Exact expected transfer in nanoTON |
+| `TON_PAYMENT_CREDIT_MTX` | TON payments | MTX credited only after on-chain confirmation |
 | `LEADERBOARD_PUBSUB` | realtime | Shared publish/subscribe binding |
 | `LEADERBOARD_WEBSOCKET` | realtime | WebSocket upgrade binding |
 | `ADMIN_AUTH` | admin | Separate username/password/OTP or identity-provider adapter |

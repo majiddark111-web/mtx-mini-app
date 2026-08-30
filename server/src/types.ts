@@ -10,7 +10,10 @@ export interface Env {
   REDIS?: RedisCommands;
   POSTGRES?: PostgresQueries;
   ECONOMY_CONFIG?: { get(key: string): Promise<string | null> };
-  PAYMENT_VERIFIER?: { verify(input: { provider: 'ton' | 'usdt'; transactionId: string; amount: number; asset: 'TON' | 'USDT'; userId: string }): Promise<{ verified: boolean; creditedCoins: number; status: 'confirmed' | 'failed' | 'refunded' }> };
+  PAYMENT_VERIFIER?: { verify(input: { provider: 'ton'; transactionId: string; amount: number; asset: 'TON'; userId: string; sourceAddress: string; createdAt: number }): Promise<{ verified: boolean; creditedCoins: number; status: 'pending' | 'confirmed' | 'failed' }> };
+  TON_TREASURY_ADDRESS?: string;
+  TON_PAYMENT_AMOUNT_NANO?: number;
+  TON_PAYMENT_CREDIT_MTX?: number;
   LEADERBOARD_PUBSUB?: LeaderboardPubSub;
   LEADERBOARD_WEBSOCKET?: { upgrade(request: Request, gateway: LeaderboardGateway): Promise<Response> };
   ADMIN_JWT_SECRET?: string;

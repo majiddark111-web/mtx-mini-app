@@ -6,7 +6,7 @@ import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } 
 import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
 import { catalogFor, CommerceStorage } from './commerce.ts';
-import { paymentConfirmationSchema, purchaseSchema } from './schema.ts';
+import { paymentConfirmationSchema, paymentIntentSchema, purchaseSchema } from './schema.ts';
 import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
 import { challengeClaimSchema } from './schema.ts';
 import { SocialStorage } from './social.ts';
@@ -182,15 +182,33 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       return json({ transactions: await commerceStorage.paymentHistory(userId) }, 200, cors);
     }
+    if (url.pathname === '/api/wallet/payments/intents' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      if (!env.REDIS || !env.TON_TREASURY_ADDRESS || !env.TON_PAYMENT_AMOUNT_NANO || !env.TON_PAYMENT_CREDIT_MTX) return json({ error: 'TON payments unavailable' }, 503, cors);
+      const body = paymentIntentSchema.parse(await request.json());
+      const transactionId = `ton_${crypto.randomUUID().replace(/-/g, '')}`;
+      const intent = { userId, sourceAddress: body.sourceAddress, amountNano: env.TON_PAYMENT_AMOUNT_NANO, creditedCoins: env.TON_PAYMENT_CREDIT_MTX, createdAt: Date.now() };
+      const saved = await env.REDIS.command<string | null>(['SET', `mtx:payment-intent:${transactionId}`, JSON.stringify(intent), 'NX', 'EX', '900']);
+      if (saved !== 'OK') return json({ error: 'Payment intent unavailable' }, 503, cors);
+      return json({ transactionId, recipient: env.TON_TREASURY_ADDRESS, amountNano: env.TON_PAYMENT_AMOUNT_NANO, creditedCoins: env.TON_PAYMENT_CREDIT_MTX, expiresAt: intent.createdAt + 900_000 }, 201, cors);
+    }
     if (url.pathname === '/api/wallet/payments/confirm' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      if (!env.PAYMENT_VERIFIER) return json({ error: 'Payment provider unavailable' }, 503, cors);
+      if (!env.PAYMENT_VERIFIER || !env.REDIS) return json({ error: 'Payment provider unavailable' }, 503, cors);
       const body = paymentConfirmationSchema.parse(await request.json());
+      if (body.provider !== 'ton' || body.asset !== 'TON') return json({ error: 'Payment asset unavailable' }, 400, cors);
       const previous = await commerceStorage.payment(body.transactionId);
       if (previous) return previous.userId === userId ? json({ transaction: previous, duplicate: true }, 200, cors) : json({ error: 'Transaction already used' }, 409, cors);
-      const verification = await env.PAYMENT_VERIFIER.verify({ ...body, userId });
+      const serializedIntent = await env.REDIS.command<string | null>(['GET', `mtx:payment-intent:${body.transactionId}`]);
+      if (!serializedIntent) return json({ error: 'Payment intent expired' }, 410, cors);
+      const intent = JSON.parse(serializedIntent) as { userId: string; sourceAddress: string; amountNano: number; creditedCoins: number; createdAt: number };
+      if (intent.userId !== userId || body.amount !== intent.amountNano / 1_000_000_000) return json({ error: 'Payment intent mismatch' }, 409, cors);
+      const verification = await env.PAYMENT_VERIFIER.verify({ provider: 'ton', transactionId: body.transactionId, amount: body.amount, asset: 'TON', userId, sourceAddress: intent.sourceAddress, createdAt: intent.createdAt });
+      if (verification.status === 'pending') return json({ status: 'pending' }, 202, cors);
       const outcome = await commerceStorage.recordPayment({ ...body, userId, creditedCoins: verification.verified && verification.status === 'confirmed' ? Math.max(0, Math.floor(verification.creditedCoins)) : 0, status: verification.verified ? verification.status : 'failed', createdAt: Date.now() }, gameStorage, Date.now());
+      await env.REDIS.command(['DEL', `mtx:payment-intent:${body.transactionId}`]);
       return json({ transaction: outcome.record, duplicate: outcome.duplicate }, 200, cors);
     }
     if (url.pathname === '/api/missions' && request.method === 'GET') {

@@ -130,12 +130,16 @@ describe('Telegram authentication security', () => {
 
   it('does not double-credit a replayed verified payment', async () => {
     let verifications = 0;
-    const paymentEnv: Env = { ...env, PAYMENT_VERIFIER: { async verify() { verifications += 1; return { verified: true, creditedCoins: 500, status: 'confirmed' as const }; } } };
+    class IntentRedis { values = new Map<string, string>(); async command<T>(parts: string[]): Promise<T> { if (parts[0] === 'SET') { this.values.set(parts[1], parts[2]); return 'OK' as T; } if (parts[0] === 'GET') return (this.values.get(parts[1]) ?? null) as T; if (parts[0] === 'DEL') { this.values.delete(parts[1]); return 1 as T; } return null as T; } }
+    const paymentEnv: Env = { ...env, REDIS: new IntentRedis(), TON_TREASURY_ADDRESS: '0QD5l1aVXwQxVyvdvv_cAXEH89_9PI8blYMPElwWMQP27wKh', TON_PAYMENT_AMOUNT_NANO: 1_000_000_000, TON_PAYMENT_CREDIT_MTX: 500, PAYMENT_VERIFIER: { async verify() { verifications += 1; return { verified: true, creditedCoins: 500, status: 'confirmed' as const }; } } };
     const login = await handleRequest(authRequest(await signedInitData()), paymentEnv);
     const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };
     const gameStorage = new GameStorage();
     const commerce = new CommerceStorage();
-    const confirm = async () => handleRequestWithStorage(await signedRequest('https://api.mtx.test/api/wallet/payments/confirm', token, sessionKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'ton', transactionId: 'ton:verified:0001', amount: 1, asset: 'TON' }) }), paymentEnv, gameStorage, commerce);
+    const intentResponse = await handleRequestWithStorage(await signedRequest('https://api.mtx.test/api/wallet/payments/intents', token, sessionKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sourceAddress: '0QDQ8n2pcAfapcoqu_V5u6rn0fIkjwGVu7Trz6vinUsiD-0o' }) }), paymentEnv, gameStorage, commerce);
+    assert.equal(intentResponse.status, 201);
+    const { transactionId } = await intentResponse.json() as { transactionId: string };
+    const confirm = async () => handleRequestWithStorage(await signedRequest('https://api.mtx.test/api/wallet/payments/confirm', token, sessionKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'ton', transactionId, amount: 1, asset: 'TON' }) }), paymentEnv, gameStorage, commerce);
     const first = await confirm();
     const second = await confirm();
     assert.equal(first.status, 200);
