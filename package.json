@@ -23,6 +23,7 @@
     "@ton/core": "0.62.0",
     "@tonconnect/ui-react": "3.0.0",
     "axios": "^1.7.9",
+    "buffer": "^6.0.3",
     "pg": "^8.23.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
