@@ -1,11 +1,11 @@
-import { ECONOMY_CONFIG } from '../../economy/economyConfig.ts';
+import { ECONOMY_CONFIG, ENERGY_RECHARGE_INTERVAL_MS } from '../../economy/economyConfig.ts';
 
 export const GAME_CONFIG = {
   tapSyncIntervalMs: 2_000,
   tapBatchSize: 50,
   maximumTapsPerSecond: 15,
   maximumEnergy: 1_000,
-  energyRechargePerSecond: 1,
+  energyRechargeIntervalMs: ENERGY_RECHARGE_INTERVAL_MS,
   offlineProfitCapHours: ECONOMY_CONFIG.sources.offline.capHours,
   initialProfitPerHour: 0,
   initialProfitPerTap: ECONOMY_CONFIG.sources.tap.baseProfit,

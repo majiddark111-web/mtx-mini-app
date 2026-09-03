@@ -35,4 +35,5 @@ export function sealActiveBatch(storage: TapOutboxStorage, userId: string): TapO
 
 export function nextTapBatch(storage: TapOutboxStorage, userId: string): TapOutboxBatch | undefined { return loadTapOutbox(storage, userId).find((batch) => batch.sealed); }
 export function acknowledgeTapBatch(storage: TapOutboxStorage, userId: string, batchId: string): void { save(storage, userId, loadTapOutbox(storage, userId).filter((batch) => batch.batchId !== batchId)); }
-export function tapBatchDuration(batch: TapOutboxBatch): number { return Math.min(10_000, Math.max(100, Math.round(batch.lastTapAt - batch.startedAt))); }
+export function pendingTapCount(storage: TapOutboxStorage, userId: string): number { return loadTapOutbox(storage, userId).reduce((total, batch) => total + batch.taps, 0); }
+export function tapBatchDuration(batch: TapOutboxBatch, now = Date.now()): number { return Math.min(10_000, Math.max(100, Math.round(now - batch.startedAt))); }

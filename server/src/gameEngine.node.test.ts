@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { applyOfflineProfit, applyTapBatch, calculateOfflineProfit, createGameState } from './gameEngine.ts';
+import { applyOfflineProfit, applyTapBatch, calculateOfflineProfit, createGameState, rechargeEnergy } from './gameEngine.ts';
 import { GameStorage, MemoryGameRepository, MemoryTapEventQueue } from './gameStorage.ts';
 import { flushTapEvents, PostgresGameRepository, RedisBatchDeduplicator, RedisTapEventQueue, type PostgresQueries, type RedisCommands } from './productionStorage.ts';
 
@@ -19,7 +19,14 @@ describe('server-authoritative game engine', () => {
     const result = applyTapBatch(state, { taps: 8, durationMs: 1_000, batchId: 'batch-0000000002' }, 2_000);
     assert.equal(result.acceptedTaps, 8);
     assert.equal(result.state.coins, 24);
-    assert.equal(result.state.energy, 3);
+    assert.equal(result.state.energy, 2);
+  });
+
+  it('recharges exactly one energy every three seconds', () => {
+    const state = { ...createGameState('42', 1_000), energy: 10 };
+    assert.equal(rechargeEnergy(state, 3_999).energy, 10);
+    assert.equal(rechargeEnergy(state, 4_000).energy, 11);
+    assert.equal(rechargeEnergy(state, 10_000).energy, 13);
   });
 
   it('caps offline profit at three hours', () => {

@@ -16,4 +16,3 @@ export async function fetchGameState(): Promise<{ state: ServerGameState; offlin
 export async function syncTapBatch(taps: number, durationMs: number, batchId: string): Promise<ServerGameState> {
   return (await httpClient.post<{ state: ServerGameState }>('/api/game/taps', { taps, durationMs, batchId })).data.state;
 }
-

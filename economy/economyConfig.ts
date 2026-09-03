@@ -12,6 +12,8 @@ export interface EconomyConfig {
   dailyScenarios: Record<'starter' | 'active' | 'power', { creditedTaps: number; missionIncome: number; referralIncome: number; offlineHours: number }>;
 }
 
+export const ENERGY_RECHARGE_INTERVAL_MS = 3_000;
+
 export const ECONOMY_CONFIG = {
   version: 1,
   currency: 'MTX',

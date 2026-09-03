@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { syncTapBatch } from '../services/gameApiService';
+import { withPendingTaps } from '../services/gameService';
 import { hapticTap } from '../services/telegramService';
-import { acknowledgeTapBatch, appendTap, nextTapBatch, sealActiveBatch, tapBatchDuration } from '../services/tapOutboxService';
+import { acknowledgeTapBatch, appendTap, nextTapBatch, pendingTapCount, sealActiveBatch, tapBatchDuration } from '../services/tapOutboxService';
 import { runTapSync } from '../services/tapSyncCoordinator';
 import { useAppStore } from '../store/useAppStore';
 
@@ -20,7 +21,7 @@ export function useTapAction(): () => void {
     if (!batch) return;
     syncing.current = true;
     let acknowledged = false;
-    try { setServerGameState(await runTapSync(() => syncTapBatch(batch.taps, tapBatchDuration(batch), batch.batchId))); acknowledgeTapBatch(localStorage, userId, batch.batchId); acknowledged = true; }
+    try { const state = await runTapSync(() => syncTapBatch(batch.taps, tapBatchDuration(batch), batch.batchId)); acknowledgeTapBatch(localStorage, userId, batch.batchId); setServerGameState(withPendingTaps(state, pendingTapCount(localStorage, userId))); acknowledged = true; }
     catch { /* The exact batch remains durable and is retried with the same id. */ }
     finally { syncing.current = false; if (acknowledged && nextTapBatch(localStorage, userId)) void flush(); }
   }, [authStatus, setServerGameState, userId]);

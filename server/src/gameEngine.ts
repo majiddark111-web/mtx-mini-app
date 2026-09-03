@@ -32,9 +32,9 @@ export function levelForXp(xp: number): number { return Math.floor(Math.sqrt(Mat
 export function rankForLevel(level: number): string { return level >= 50 ? 'Diamond' : level >= 30 ? 'Platinum' : level >= 20 ? 'Gold' : level >= 10 ? 'Silver' : 'Bronze'; }
 
 export function rechargeEnergy(state: ServerGameState, now: number): ServerGameState {
-  const elapsedSeconds = Math.max(0, Math.floor((now - state.lastEnergyAt) / 1_000));
-  if (elapsedSeconds === 0) return state;
-  return { ...state, energy: Math.min(state.maximumEnergy, state.energy + elapsedSeconds * GAME_CONFIG.energyRechargePerSecond), lastEnergyAt: state.lastEnergyAt + elapsedSeconds * 1_000 };
+  const rechargeUnits = Math.max(0, Math.floor((now - state.lastEnergyAt) / GAME_CONFIG.energyRechargeIntervalMs));
+  if (rechargeUnits === 0) return state;
+  return { ...state, energy: Math.min(state.maximumEnergy, state.energy + rechargeUnits), lastEnergyAt: state.lastEnergyAt + rechargeUnits * GAME_CONFIG.energyRechargeIntervalMs };
 }
 
 export function calculateOfflineProfit(profitPerHour: number, elapsedMs: number, economy: EconomyConfig = ECONOMY_CONFIG): number {
