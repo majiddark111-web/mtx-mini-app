@@ -61,6 +61,20 @@ export class PostgresCommercePersistence implements CommercePersistence {
     });
   }
 
+  async equippedSkin(userId: string): Promise<'skin:aurora' | null> {
+    const result = await this.database.query<{ skin_item_id: 'skin:aurora' }>('SELECT skin_item_id FROM mtx_equipped_cosmetics WHERE user_id = $1', [userId]);
+    return result.rows[0]?.skin_item_id ?? null;
+  }
+
+  async selectSkin(userId: string, skinId: 'skin:aurora' | null, now: number): Promise<void> {
+    await this.inTransaction(async (database) => {
+      if (!skinId) { await database.query('DELETE FROM mtx_equipped_cosmetics WHERE user_id = $1', [userId]); return; }
+      const owned = await database.query<{ item_id: string }>('SELECT item_id FROM mtx_inventory WHERE user_id = $1 AND item_id = $2 AND quantity > 0 FOR UPDATE', [userId, skinId]);
+      if (!owned.rows[0]) throw new Error('ITEM_NOT_OWNED');
+      await database.query('INSERT INTO mtx_equipped_cosmetics (user_id, skin_item_id, equipped_at) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET skin_item_id = EXCLUDED.skin_item_id, equipped_at = EXCLUDED.equipped_at', [userId, skinId, new Date(now).toISOString()]);
+    });
+  }
+
   async payment(transactionId: string): Promise<PaymentRecord | undefined> {
     const result = await this.database.query<PaymentRow>('SELECT transaction_id, user_id, provider, asset, amount, credited_coins, status, created_at FROM mtx_payments WHERE transaction_id = $1', [transactionId]);
     return result.rows[0] && paymentRecord(result.rows[0]);

@@ -55,6 +55,15 @@ export const inventoryActivationSchema: Schema<{ itemId: 'boost:recharge' | 'con
   },
 };
 
+export const skinSelectionSchema: Schema<{ skinId: 'skin:aurora' | null }> = {
+  parse(value) {
+    if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
+    const body = value as Record<string, unknown>;
+    if (Object.keys(body).some((key) => key !== 'skinId') || (body.skinId !== null && body.skinId !== 'skin:aurora')) throw new ValidationError('Invalid skin');
+    return { skinId: body.skinId };
+  },
+};
+
 export const paymentConfirmationSchema: Schema<{ provider: 'ton' | 'usdt'; transactionId: string; amount: number; asset: 'TON' | 'USDT' }> = {
   parse(value) {
     if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');

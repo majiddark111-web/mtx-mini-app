@@ -15,9 +15,9 @@ describe('database migrations', () => {
         return { rows: [] };
       },
     };
-    assert.deepEqual(await runMigrations(database), ['001_initial.sql']);
+    assert.deepEqual(await runMigrations(database), ['001_initial.sql', '002_equipped_cosmetics.sql']);
     assert.deepEqual(await runMigrations(database), []);
     assert.equal(schemaExecutions, 1);
-    assert.equal(applied.size, 1);
+    assert.equal(applied.size, 2);
   });
 });

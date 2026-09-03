@@ -3,10 +3,11 @@ import { useGamePersistence } from '../hooks/useGamePersistence';
 import { useGameSync } from '../hooks/useGameSync';
 import { useTelegramUser } from '../hooks/useTelegramUser';
 import { useTelegramNavigation } from '../hooks/useTelegramNavigation';
+import { useInventorySync } from '../hooks/useInventorySync';
 import { BottomNavigation } from '../components/navigation/BottomNavigation';
 
 export function AppLayout() {
-  useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync();
+  useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync(); useInventorySync();
   const location = useLocation();
   return <div className="app-shell"><Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <BottomNavigation />}</div>;
 }

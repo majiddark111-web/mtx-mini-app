@@ -45,4 +45,17 @@ describe('inventory boost activation', () => {
     assert.equal(activated.state.energy, 600);
     assert.equal(activated.items.length, 0);
   });
+
+  it('equips only an owned skin and persists default selection', async () => {
+    const now = 40_000;
+    const repository = new MemoryGameRepository();
+    await repository.save({ ...createGameState('skin-user', now), coins: 10_000 });
+    const game = new GameStorage(repository);
+    const commerce = new CommerceStorage();
+    await assert.rejects(() => commerce.selectSkin('skin-user', 'skin:aurora', now), /ITEM_NOT_OWNED/);
+    await commerce.purchase('skin-user', 'skin:aurora', '44444444-4444-4444-8444-444444444444', game, ECONOMY_CONFIG, now);
+    assert.equal(await commerce.selectSkin('skin-user', 'skin:aurora', now + 1), 'skin:aurora');
+    assert.equal(await commerce.equippedSkin('skin-user'), 'skin:aurora');
+    assert.equal(await commerce.selectSkin('skin-user', null, now + 2), null);
+  });
 });

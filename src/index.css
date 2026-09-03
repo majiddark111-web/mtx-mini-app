@@ -34,6 +34,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .score { color: #ffd21e; font-size: 1.4rem; }
 .coin-button { -webkit-appearance: none; -webkit-tap-highlight-color: transparent; background: transparent; border: 0; border-radius: 50%; cursor: pointer; height: min(72vw, 300px); outline: 0; padding: 0; touch-action: manipulation; transition: transform .1s ease; user-select: none; width: min(72vw, 300px); }
 .coin-button:focus, .coin-button:focus-visible { box-shadow: none; outline: 0; }
+.coin-button.coin-aurora img { filter: hue-rotate(155deg) saturate(1.9) drop-shadow(0 0 18px rgba(96,180,255,.85)) drop-shadow(0 0 34px rgba(183,92,255,.55)); }
 .coin-button:active { transform: scale(.94); }
 .coin-button img { -webkit-user-drag: none; display: block; height: 100%; object-fit: contain; pointer-events: none; user-select: none; width: 100%; }
 .energy-track { background: #333; border-radius: 10px; box-shadow: 0 0 10px #ffd21e; height: 18px; overflow: hidden; width: min(76vw, 320px); }

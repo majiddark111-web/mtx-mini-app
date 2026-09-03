@@ -19,6 +19,8 @@ export interface CommercePersistence {
   purchase(userId: string, idempotencyKey: string): Promise<PurchaseRecord | undefined>;
   commitPurchase(record: PurchaseRecord, previousVersion: number, state: ServerGameState, inventory?: InventoryEntry): Promise<{ record: PurchaseRecord; duplicate: boolean }>;
   consumeInventory(userId: string, itemId: string, previousVersion: number, state: ServerGameState): Promise<void>;
+  equippedSkin(userId: string): Promise<'skin:aurora' | null>;
+  selectSkin(userId: string, skinId: 'skin:aurora' | null, now: number): Promise<void>;
   payment(transactionId: string): Promise<PaymentRecord | undefined>;
   commitPayment(record: PaymentRecord, previousVersion: number, state: ServerGameState): Promise<{ record: PaymentRecord; duplicate: boolean }>;
 }
@@ -28,6 +30,7 @@ export class MemoryCommercePersistence implements CommercePersistence {
   private inventories = new Map<string, InventoryEntry[]>();
   private purchases = new Map<string, PurchaseRecord>();
   private payments = new Map<string, PaymentRecord>();
+  private equippedSkins = new Map<string, 'skin:aurora'>();
   async inventory(userId: string): Promise<InventoryEntry[]> { return structuredClone(this.inventories.get(userId) ?? []); }
   async purchaseHistory(userId: string): Promise<PurchaseRecord[]> { return structuredClone([...this.purchases.values()].filter((record) => record.userId === userId)); }
   async paymentHistory(userId: string): Promise<PaymentRecord[]> { return structuredClone([...this.payments.values()].filter((record) => record.userId === userId)); }
@@ -35,6 +38,8 @@ export class MemoryCommercePersistence implements CommercePersistence {
   async purchase(userId: string, idempotencyKey: string): Promise<PurchaseRecord | undefined> { const record = this.purchases.get(`${userId}:${idempotencyKey}`); return record && structuredClone(record); }
   async commitPurchase(record: PurchaseRecord, previousVersion: number, state: ServerGameState, entry?: InventoryEntry): Promise<{ record: PurchaseRecord; duplicate: boolean }> { void previousVersion; void state; const key = `${record.userId}:${record.idempotencyKey}`; const existing = this.purchases.get(key); if (existing) return { record: structuredClone(existing), duplicate: true }; this.purchases.set(key, structuredClone(record)); if (entry) { const entries = this.inventories.get(record.userId) ?? []; const owned = entries.find((candidate) => candidate.itemId === entry.itemId); if (owned) owned.quantity += entry.quantity; else entries.push(structuredClone(entry)); this.inventories.set(record.userId, entries); } return { record: structuredClone(record), duplicate: false }; }
   async consumeInventory(userId: string, itemId: string, previousVersion: number, state: ServerGameState): Promise<void> { void previousVersion; void state; const entries = this.inventories.get(userId) ?? []; const owned = entries.find((entry) => entry.itemId === itemId); if (!owned || owned.quantity < 1) throw new Error('ITEM_NOT_OWNED'); owned.quantity -= 1; if (owned.quantity === 0) this.inventories.set(userId, entries.filter((entry) => entry !== owned)); }
+  async equippedSkin(userId: string): Promise<'skin:aurora' | null> { return this.equippedSkins.get(userId) ?? null; }
+  async selectSkin(userId: string, skinId: 'skin:aurora' | null, now: number): Promise<void> { void now; if (skinId && !(this.inventories.get(userId) ?? []).some((entry) => entry.itemId === skinId && entry.quantity > 0)) throw new Error('ITEM_NOT_OWNED'); if (skinId) this.equippedSkins.set(userId, skinId); else this.equippedSkins.delete(userId); }
   async payment(transactionId: string): Promise<PaymentRecord | undefined> { const record = this.payments.get(transactionId); return record && structuredClone(record); }
   async commitPayment(record: PaymentRecord, previousVersion: number, state: ServerGameState): Promise<{ record: PaymentRecord; duplicate: boolean }> { void previousVersion; void state; const existing = this.payments.get(record.transactionId); if (existing) return { record: structuredClone(existing), duplicate: true }; this.payments.set(record.transactionId, structuredClone(record)); return { record: structuredClone(record), duplicate: false }; }
 }
@@ -63,6 +68,7 @@ export class CommerceStorage {
   paymentHistory(userId: string): Promise<PaymentRecord[]> { return this.persistence.paymentHistory(userId); }
   allPayments(): Promise<PaymentRecord[]> { return this.persistence.allPayments(); }
   payment(transactionId: string): Promise<PaymentRecord | undefined> { return this.persistence.payment(transactionId); }
+  equippedSkin(userId: string): Promise<'skin:aurora' | null> { return this.persistence.equippedSkin(userId); }
 
   async purchase(userId: string, itemId: string, idempotencyKey: string, gameStorage: GameStorage, economy: EconomyConfig, now: number): Promise<{ state: ServerGameState; record: PurchaseRecord; duplicate: boolean }> {
     const existing = await this.persistence.purchase(userId, idempotencyKey);
@@ -105,4 +111,6 @@ export class CommerceStorage {
     gameStorage.saveHot(updated, !this.persistence.persistsGameState);
     return { state: updated, items: await this.inventory(userId) };
   }
+
+  async selectSkin(userId: string, skinId: 'skin:aurora' | null, now: number): Promise<'skin:aurora' | null> { await this.persistence.selectSkin(userId, skinId, now); return this.persistence.equippedSkin(userId); }
 }

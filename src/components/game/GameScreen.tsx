@@ -11,6 +11,7 @@ export function GameScreen() {
   const score = useAppStore((state) => state.score);
   const energy = useAppStore((state) => state.energy);
   const maxEnergy = useAppStore((state) => state.maxEnergy);
+  const equippedSkin = useAppStore((state) => state.inventory.equippedSkin);
   const tap = useTapAction();
   const user = useAppStore((state) => state.user);
   useEnergyRecharge();
@@ -19,7 +20,7 @@ export function GameScreen() {
     <div className="galaxy" />
     <section className="game-content">
       <header className="profile-row">{user.avatar && <img src={user.avatar} alt="" />}<span>@{user.username}</span></header>
-      <div className="tap-zone"><strong className="score">{score} MTX</strong><button className="coin-button" type="button" aria-label="Tap MTX coin" onClick={tap}><img src={ASSETS.coin} alt="MTX coin" /></button>
+      <div className="tap-zone"><strong className="score">{score} MTX</strong><button className={`coin-button ${equippedSkin === 'skin:aurora' ? 'coin-aurora' : ''}`} type="button" aria-label="Tap MTX coin" onClick={tap}><img src={ASSETS.coin} alt="MTX coin" /></button>
         <div className="energy-track"><div style={{ width: `${energyPercentage}%` }} /></div><span>Energy: {energy} / {maxEnergy}</span>
       </div>
       <div className="game-actions"><button type="button" onClick={() => setModal('boost')}>⚡<span>Boost</span></button><button type="button" onClick={() => setModal('earn')}>🎯<span>Earn</span></button></div>

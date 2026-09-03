@@ -6,7 +6,7 @@ import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } 
 import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
 import { catalogFor, CommerceStorage } from './commerce.ts';
-import { inventoryActivationSchema, paymentConfirmationSchema, paymentIntentSchema, purchaseSchema } from './schema.ts';
+import { inventoryActivationSchema, paymentConfirmationSchema, paymentIntentSchema, purchaseSchema, skinSelectionSchema } from './schema.ts';
 import { missionClaimSchema, referralAcceptSchema } from './schema.ts';
 import { challengeClaimSchema } from './schema.ts';
 import { SocialStorage } from './social.ts';
@@ -174,13 +174,19 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
-      return json({ items: await commerceStorage.inventory(userId), purchases: await commerceStorage.purchaseHistory(userId) }, 200, cors);
+      return json({ items: await commerceStorage.inventory(userId), purchases: await commerceStorage.purchaseHistory(userId), equippedSkin: await commerceStorage.equippedSkin(userId) }, 200, cors);
     }
     if (url.pathname === '/api/inventory/activate' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       const body = inventoryActivationSchema.parse(await request.json());
       return json(await commerceStorage.activate(userId, body.itemId, gameStorage, Date.now()), 200, cors);
+    }
+    if (url.pathname === '/api/inventory/skin' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const body = skinSelectionSchema.parse(await request.json());
+      return json({ equippedSkin: await commerceStorage.selectSkin(userId, body.skinId, Date.now()) }, 200, cors);
     }
     if (url.pathname === '/api/wallet/transactions' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
