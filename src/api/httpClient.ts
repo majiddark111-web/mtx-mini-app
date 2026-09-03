@@ -6,7 +6,7 @@ export const setApiAuthToken = (token: string): void => { authToken = token; };
 export const setApiSessionKey = (key: string): void => { sessionKey = key; };
 export const getApiAuthToken = (): string => authToken;
 
-export const httpClient = axios.create({ baseURL: import.meta.env.VITE_API_BASE || '', timeout: 10_000 });
+export const httpClient = axios.create({ baseURL: import.meta.env.VITE_API_BASE || '', timeout: 30_000 });
 
 const base64Url = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 const decodeBase64Url = (value: string): Uint8Array => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), (character) => character.charCodeAt(0));
