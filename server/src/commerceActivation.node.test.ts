@@ -33,4 +33,16 @@ describe('inventory boost activation', () => {
     await assert.rejects(() => commerce.activate('full-user', 'boost:recharge', game, now + 1_000), /BOOST_NOT_NEEDED/);
     assert.equal((await commerce.inventory('full-user'))[0]?.quantity, 1);
   });
+
+  it('consumes an energy cell and restores exactly 25% of maximum energy', async () => {
+    const now = 30_000;
+    const repository = new MemoryGameRepository();
+    await repository.save({ ...createGameState('cell-user', now), coins: 10_000, maximumEnergy: 2_000, energy: 100 });
+    const game = new GameStorage(repository);
+    const commerce = new CommerceStorage();
+    await commerce.purchase('cell-user', 'consumable:energy', '33333333-3333-4333-8333-333333333333', game, ECONOMY_CONFIG, now);
+    const activated = await commerce.activate('cell-user', 'consumable:energy', game, now + 1_000);
+    assert.equal(activated.state.energy, 600);
+    assert.equal(activated.items.length, 0);
+  });
 });

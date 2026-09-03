@@ -46,12 +46,12 @@ export const purchaseSchema: Schema<{ itemId: string; idempotencyKey: string }> 
   },
 };
 
-export const inventoryActivationSchema: Schema<{ itemId: 'boost:recharge' }> = {
+export const inventoryActivationSchema: Schema<{ itemId: 'boost:recharge' | 'consumable:energy' }> = {
   parse(value) {
     if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
     const body = value as Record<string, unknown>;
-    if (Object.keys(body).some((key) => key !== 'itemId') || body.itemId !== 'boost:recharge') throw new ValidationError('Invalid inventory item');
-    return { itemId: 'boost:recharge' };
+    if (Object.keys(body).some((key) => key !== 'itemId') || (body.itemId !== 'boost:recharge' && body.itemId !== 'consumable:energy')) throw new ValidationError('Invalid inventory item');
+    return { itemId: body.itemId };
   },
 };
 

@@ -51,7 +51,7 @@ export function catalogFor(state: ServerGameState, economy: EconomyConfig, inven
   return [...dynamic,
     { id: 'skin:aurora', category: 'skin', title: 'Aurora Skin', description: 'MTX aurora coin appearance', price: economy.upgrades.tap.baseCost * 3, featured: true, limited: true, owned: owned.has('skin:aurora') },
     { id: 'boost:recharge', category: 'boost', title: 'Recharge Boost', description: 'Refill energy to maximum once when activated', price: economy.upgrades.energy.baseCost, featured: false, limited: false, owned: false },
-    { id: 'consumable:energy', category: 'consumable', title: 'Energy Cell', description: 'Consumable reserved for Phase 5 activation rules', price: Math.ceil(economy.upgrades.energy.baseCost / 3), featured: false, limited: false, owned: false },
+    { id: 'consumable:energy', category: 'consumable', title: 'Energy Cell', description: 'Restore 25% of maximum energy once', price: Math.ceil(economy.upgrades.energy.baseCost / 3), featured: false, limited: false, owned: false },
   ];
 }
 
@@ -96,10 +96,11 @@ export class CommerceStorage {
     return outcome;
   }
 
-  async activate(userId: string, itemId: 'boost:recharge', gameStorage: GameStorage, now: number): Promise<{ state: ServerGameState; items: InventoryEntry[] }> {
+  async activate(userId: string, itemId: 'boost:recharge' | 'consumable:energy', gameStorage: GameStorage, now: number): Promise<{ state: ServerGameState; items: InventoryEntry[] }> {
     const current = await gameStorage.stateFor(userId, now);
     if (current.energy >= current.maximumEnergy) throw new Error('BOOST_NOT_NEEDED');
-    const updated = { ...current, energy: current.maximumEnergy, lastEnergyAt: now, lastSeenAt: now, version: current.version + 1 };
+    const restoredEnergy = itemId === 'boost:recharge' ? current.maximumEnergy : Math.min(current.maximumEnergy, current.energy + Math.ceil(current.maximumEnergy * 0.25));
+    const updated = { ...current, energy: restoredEnergy, lastEnergyAt: now, lastSeenAt: now, version: current.version + 1 };
     await this.persistence.consumeInventory(userId, itemId, current.version, updated);
     gameStorage.saveHot(updated, !this.persistence.persistsGameState);
     return { state: updated, items: await this.inventory(userId) };
