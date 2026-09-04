@@ -16,6 +16,7 @@ import { issueAdminJwt, verifyAdminJwt } from './adminAuth.ts';
 import { adminBanSchema, adminEventSchema, adminLoginSchema, adminNotificationSchema } from './schema.ts';
 import type { Env } from './types.ts';
 import { AntiCheatMonitor, deriveSessionKey, MemoryReplayProtection, type ReplayProtection, validateSignedRequest } from './requestSecurity.ts';
+import { rewardHistory } from './rewardHistory.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
@@ -175,6 +176,13 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = await authenticatedUserId(request, env);
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       return json({ items: await commerceStorage.inventory(userId), purchases: await commerceStorage.purchaseHistory(userId), equippedSkin: await commerceStorage.equippedSkin(userId) }, 200, cors);
+    }
+    if (url.pathname === '/api/history' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const [purchases, payments, rewards] = await Promise.all([commerceStorage.purchaseHistory(userId), commerceStorage.paymentHistory(userId), env.POSTGRES ? rewardHistory(env.POSTGRES, userId) : Promise.resolve([])]);
+      return json({ purchases, payments, rewards }, 200, cors);
     }
     if (url.pathname === '/api/inventory/activate' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);

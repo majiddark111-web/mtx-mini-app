@@ -14,6 +14,7 @@ const DailyRewardPage = lazy(() => import('../pages/DailyRewardPage').then(({ Da
 const LeaderboardPage = lazy(() => import('../pages/LeaderboardPage').then(({ LeaderboardPage }) => ({ default: LeaderboardPage })));
 const ReferralPage = lazy(() => import('../pages/ReferralPage').then(({ ReferralPage }) => ({ default: ReferralPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })));
+const HistoryPage = lazy(() => import('../pages/HistoryPage').then(({ HistoryPage }) => ({ default: HistoryPage })));
 const AdminLoginPage = lazy(() => import('../pages/AdminLoginPage').then(({ AdminLoginPage }) => ({ default: AdminLoginPage })));
 const AdminPage = lazy(() => import('../pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
 
@@ -30,7 +31,7 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: '/profile', element: <ProfilePage /> },
   { path: '/settings', element: placeholder('Settings', 'Theme, sound and language controls will appear here.') },
   { path: '/notifications', element: placeholder('Notifications', 'Game announcements and reward updates will appear here.') },
-  { path: '/history', element: placeholder('History', 'Reward, upgrade and transaction history will appear here.') },
+  { path: '/history', element: <HistoryPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },
   { element: <ProtectedAdminRoute />, children: [{ path: '/admin', element: <AdminPage /> }] },
   { path: '*', element: placeholder('Not Found', 'This MTX page does not exist.') },
