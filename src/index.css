@@ -64,6 +64,14 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .commerce-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .commerce-tools input, .commerce-tools select { background: #151515; border: 1px solid #333; border-radius: 12px; color: #eee; min-width: 130px; padding: 10px; }
 .commerce-tools input { flex: 1; }
+.category-tabs { display: grid; gap: 8px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 14px; }
+.category-tab { align-items: center; background: #151515; border: 1px solid #343434; border-radius: 15px; color: #aaa; cursor: pointer; display: flex; flex-direction: column; font-size: .72rem; font-weight: 700; gap: 5px; min-height: 68px; padding: 9px 4px; transition: background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease; }
+.category-tab-icon { font-size: 1.35rem; line-height: 1; }
+.category-tab.active { background: linear-gradient(145deg, #ffd21e, #dca800); border-color: #ffe36d; box-shadow: 0 5px 18px rgba(255,210,30,.2); color: #111; transform: translateY(-2px); }
+.more-filters { margin-bottom: 16px; }
+.more-filters summary { color: #bbb; cursor: pointer; font-size: .85rem; padding: 3px 0 10px; }
+.more-filters .commerce-tools { margin-bottom: 0; }
+.inventory-sort { display: flex; justify-content: flex-end; margin-bottom: 16px; }
 .product-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .product-card, .wallet-card, .purchase-history, .empty-state { background: linear-gradient(145deg, rgba(255,210,30,.08), rgba(255,255,255,.03)); border: 1px solid #302c1b; border-radius: 18px; padding: 16px; }
 .product-icon { align-items: center; background: rgba(255,210,30,.1); border: 1px solid rgba(255,210,30,.24); border-radius: 14px; display: flex; font-size: 2rem; height: 54px; justify-content: center; margin-bottom: 12px; width: 54px; }
@@ -74,6 +82,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .tag { align-self: flex-start; background: #2c2714; border-radius: 999px; color: #ffd21e; font-size: .67rem; padding: 5px 8px; text-transform: uppercase; }
 .tag.limited { background: #382020; color: #ff9292; }
 .empty-state { color: #aaa; text-align: center; }
+@media (max-width: 480px) {
+  .category-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .category-tab { font-size: .76rem; min-height: 72px; }
+}
 .status-message { background: #171717; border-radius: 12px; bottom: 86px; left: 50%; margin: 0; padding: 11px 16px; position: fixed; transform: translateX(-50%); z-index: 10; }
 .purchase-history { margin-top: 16px; }
 .purchase-history h2 { font-size: 1rem; }
