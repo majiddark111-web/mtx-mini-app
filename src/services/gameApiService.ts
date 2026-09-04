@@ -6,6 +6,9 @@ export interface ServerGameState {
   maximumEnergy: number;
   profitPerTap: number;
   profitPerHour: number;
+  tapLevel: number;
+  energyLevel: number;
+  profitLevel: number;
   version: number;
 }
 

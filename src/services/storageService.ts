@@ -25,6 +25,8 @@ export function loadGameState(): GameState {
       tapLevel: Math.floor(safeNumber(saved.tapLevel, 0)),
       energyLevel: Math.floor(safeNumber(saved.energyLevel, 0)),
       tapPower: Math.floor(safeNumber(saved.tapPower, 1, 1)),
+      profitPerHour: Math.floor(safeNumber(saved.profitPerHour, 0, 0)),
+      profitLevel: Math.floor(safeNumber(saved.profitLevel, 0, 0)),
       boostHistory: Array.isArray(saved.boostHistory) ? saved.boostHistory.filter(isHistoryItem).slice(0, 20) : [],
     };
   } catch {

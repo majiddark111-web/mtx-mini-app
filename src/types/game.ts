@@ -14,6 +14,8 @@ export interface GameState {
   tapLevel: number;
   energyLevel: number;
   tapPower: number;
+  profitPerHour: number;
+  profitLevel: number;
   boostHistory: BoostHistoryItem[];
 }
 

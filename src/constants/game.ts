@@ -8,6 +8,8 @@ export const DEFAULT_GAME_STATE = {
   tapLevel: 0,
   energyLevel: 0,
   tapPower: ECONOMY_CONFIG.sources.tap.baseProfit,
+  profitPerHour: 0,
+  profitLevel: 0,
   boostHistory: [],
 } as const;
 

@@ -6,6 +6,28 @@ import { createGameState } from './gameEngine.ts';
 import { GameStorage, MemoryGameRepository } from './gameStorage.ts';
 
 describe('inventory boost activation', () => {
+  it('persists every permanent upgrade across a fresh game session', async () => {
+    const now = 5_000;
+    const repository = new MemoryGameRepository();
+    await repository.save({ ...createGameState('upgrade-user', now), coins: 100_000 });
+    const game = new GameStorage(repository);
+    const commerce = new CommerceStorage();
+
+    await commerce.purchase('upgrade-user', 'upgrade:tap', 'upgrade-tap-session-0001', game, ECONOMY_CONFIG, now);
+    await commerce.purchase('upgrade-user', 'upgrade:energy', 'upgrade-energy-session-01', game, ECONOMY_CONFIG, now + 1);
+    await commerce.purchase('upgrade-user', 'upgrade:profit', 'upgrade-profit-session-01', game, ECONOMY_CONFIG, now + 2);
+    await game.flushDirty();
+
+    const reopened = await new GameStorage(repository).stateFor('upgrade-user', now + 3);
+    assert.equal(reopened.tapLevel, 1);
+    assert.equal(reopened.profitPerTap, 2);
+    assert.equal(reopened.energyLevel, 1);
+    assert.equal(reopened.maximumEnergy, 1_500);
+    assert.equal(reopened.profitLevel, 1);
+    assert.equal(reopened.profitPerHour, 50);
+    assert.equal(reopened.coins, 96_250);
+  });
+
   it('atomically consumes a recharge boost and fills server-owned energy', async () => {
     const now = 10_000;
     const repository = new MemoryGameRepository();
