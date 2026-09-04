@@ -1,4 +1,12 @@
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #fff; background: #080808; font-synthesis: none; }
+:root[data-app-theme="light"] { color: #171717; background: #f4f1e7; }
+:root[data-app-theme="light"] body { background: radial-gradient(900px 600px at 50% -10%, #fff1a8 0%, #f7f5ee 55%, #efede6 100%); }
+:root[data-app-theme="light"] .app-shell { color: #171717; }
+:root[data-app-theme="light"] :is(.home-shortcuts a, .product-card, .wallet-card, .purchase-history, .empty-state, .social-card, .daily-card, .referral-card, .profile-card, .settings-card, .settings-note, .activity-item, .category-tab, .history-tabs button) { background: #fff; border-color: #ddd4ae; color: #222; }
+:root[data-app-theme="light"] :is(.commerce-header p, .product-card p, .settings-row small, .settings-note p, .muted) { color: #666; }
+:root[data-low-power="true"] *, :root[data-low-power="true"] *::before, :root[data-low-power="true"] *::after { animation: none !important; scroll-behavior: auto !important; transition: none !important; }
+:root[data-low-power="true"] .galaxy { display: none; }
+:root[data-low-power="true"] :is(.energy-track, .category-tab.active, .coin-button.coin-aurora img) { box-shadow: none; filter: none; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(900px 600px at 50% -10%, #24200b 0%, #0b0b0b 55%, #080808 100%); }
 button, a { font: inherit; }
@@ -88,6 +96,29 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .activity-status.confirmed, .activity-status.completed, .activity-status.claimed { border-color: #287446; color: #67dc91; }
 .activity-status.failed, .activity-status.refunded { border-color: #8d3939; color: #ff8e8e; }
 .empty-state .button { display: block; margin: 12px auto 0; }
+.settings-card, .settings-note { background: #151515; border: 1px solid #302c1b; border-radius: 18px; margin-bottom: 14px; padding: 16px; }
+.settings-card h2 { font-size: 1rem; margin: 0 0 14px; }
+.theme-options { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); }
+.theme-options button { background: #202020; border: 1px solid #3a3a3a; border-radius: 14px; color: #aaa; cursor: pointer; padding: 11px 5px; text-transform: capitalize; }
+.theme-options button span { display: block; font-size: 1.35rem; margin-bottom: 4px; }
+.theme-options button.active { background: #ffd21e; border-color: #ffe36d; color: #111; font-weight: 800; }
+.settings-row { align-items: center; border-top: 1px solid #292929; cursor: pointer; display: grid; gap: 10px; grid-template-columns: auto 1fr 46px; padding: 14px 0; position: relative; }
+.settings-row:first-of-type { border-top: 0; }
+.settings-row > span:nth-child(2) { display: flex; flex-direction: column; gap: 3px; }
+.settings-row small { color: #888; font-size: .7rem; }
+.settings-icon { font-size: 1.35rem; }
+.settings-row input { height: 1px; opacity: 0; position: absolute; width: 1px; }
+.settings-row i { background: #444; border-radius: 999px; height: 26px; position: relative; transition: background .15s ease; width: 46px; }
+.settings-row i::after { background: #ddd; border-radius: 50%; content: ''; height: 20px; left: 3px; position: absolute; top: 3px; transition: transform .15s ease; width: 20px; }
+.settings-row input:checked + i { background: #dca800; }
+.settings-row input:checked + i::after { background: #fff; transform: translateX(20px); }
+.settings-row input:focus-visible + i { outline: 3px solid #fff; outline-offset: 3px; }
+.settings-note p { color: #888; font-size: .78rem; line-height: 1.55; margin-bottom: 0; }
+@media (prefers-color-scheme: light) {
+  :root[data-app-theme="system"] { color: #171717; background: #f4f1e7; }
+  :root[data-app-theme="system"] body { background: radial-gradient(900px 600px at 50% -10%, #fff1a8 0%, #f7f5ee 55%, #efede6 100%); }
+  :root[data-app-theme="system"] :is(.home-shortcuts a, .product-card, .wallet-card, .purchase-history, .empty-state, .social-card, .daily-card, .referral-card, .profile-card, .settings-card, .settings-note, .activity-item, .category-tab, .history-tabs button) { background: #fff; border-color: #ddd4ae; color: #222; }
+}
 .product-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .product-card, .wallet-card, .purchase-history, .empty-state { background: linear-gradient(145deg, rgba(255,210,30,.08), rgba(255,255,255,.03)); border: 1px solid #302c1b; border-radius: 18px; padding: 16px; }
 .product-icon { align-items: center; background: rgba(255,210,30,.1); border: 1px solid rgba(255,210,30,.24); border-radius: 14px; display: flex; font-size: 2rem; height: 54px; justify-content: center; margin-bottom: 12px; width: 54px; }

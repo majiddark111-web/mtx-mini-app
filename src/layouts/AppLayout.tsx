@@ -5,8 +5,11 @@ import { useTelegramUser } from '../hooks/useTelegramUser';
 import { useTelegramNavigation } from '../hooks/useTelegramNavigation';
 import { useInventorySync } from '../hooks/useInventorySync';
 import { BottomNavigation } from '../components/navigation/BottomNavigation';
+import { useEffect } from 'react';
+import { initializePreferences } from '../services/preferencesService';
 
 export function AppLayout() {
+  useEffect(() => initializePreferences(), []);
   useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync(); useInventorySync();
   const location = useLocation();
   return <div className="app-shell"><Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <BottomNavigation />}</div>;

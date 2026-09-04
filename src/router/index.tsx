@@ -15,6 +15,7 @@ const LeaderboardPage = lazy(() => import('../pages/LeaderboardPage').then(({ Le
 const ReferralPage = lazy(() => import('../pages/ReferralPage').then(({ ReferralPage }) => ({ default: ReferralPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage').then(({ ProfilePage }) => ({ default: ProfilePage })));
 const HistoryPage = lazy(() => import('../pages/HistoryPage').then(({ HistoryPage }) => ({ default: HistoryPage })));
+const SettingsPage = lazy(() => import('../pages/SettingsPage').then(({ SettingsPage }) => ({ default: SettingsPage })));
 const AdminLoginPage = lazy(() => import('../pages/AdminLoginPage').then(({ AdminLoginPage }) => ({ default: AdminLoginPage })));
 const AdminPage = lazy(() => import('../pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
 
@@ -29,7 +30,7 @@ export const router = createBrowserRouter([{ element: <AppLayout />, children: [
   { path: '/leaderboard', element: <LeaderboardPage /> },
   { path: '/referral', element: <ReferralPage /> },
   { path: '/profile', element: <ProfilePage /> },
-  { path: '/settings', element: placeholder('Settings', 'Theme, sound and language controls will appear here.') },
+  { path: '/settings', element: <SettingsPage /> },
   { path: '/notifications', element: placeholder('Notifications', 'Game announcements and reward updates will appear here.') },
   { path: '/history', element: <HistoryPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { syncTapBatch } from '../services/gameApiService';
 import { withPendingTaps } from '../services/gameService';
 import { hapticTap } from '../services/telegramService';
+import { playTapSound } from '../services/preferencesService';
 import { acknowledgeTapBatch, appendTap, nextTapBatch, pendingTapCount, sealActiveBatch, tapBatchDuration } from '../services/tapOutboxService';
 import { runTapSync } from '../services/tapSyncCoordinator';
 import { useAppStore } from '../store/useAppStore';
@@ -39,6 +40,7 @@ export function useTapAction(): () => void {
 
   return useCallback(() => {
     hapticTap();
+    playTapSound();
     if (authStatus === 'authenticated') {
       if (!userId) return;
       const batch = appendTap(localStorage, userId);

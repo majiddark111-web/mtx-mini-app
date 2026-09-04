@@ -1,4 +1,5 @@
 import type { TelegramUser, TelegramWebApp } from '../types/telegram';
+import { getPreferences } from './preferencesService.ts';
 
 export function getTelegramApp(): TelegramWebApp | undefined { return window.Telegram?.WebApp; }
 export function getTelegramUser(): TelegramUser | undefined { return getTelegramApp()?.initDataUnsafe?.user; }
@@ -28,7 +29,7 @@ export function openExternalLink(url: string): void {
   if (app?.openLink) app.openLink(url);
   else window.open(url, '_blank', 'noopener,noreferrer');
 }
-export function hapticTap(): void { const feedback = getTelegramApp()?.HapticFeedback; if (feedback) feedback.impactOccurred('light'); else if ('vibrate' in navigator) navigator.vibrate(10); }
+export function hapticTap(): void { if (!getPreferences().haptics) return; const feedback = getTelegramApp()?.HapticFeedback; if (feedback) feedback.impactOccurred('light'); else if ('vibrate' in navigator) navigator.vibrate(10); }
 
 export function telegramStartAppLink(startParameter?: string): string {
   const configured = String(import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'TOKXTAPBOT').replace(/^@/, '');

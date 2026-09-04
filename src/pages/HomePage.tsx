@@ -6,5 +6,6 @@ const shortcuts = [
   { to: '/store', icon: '🛍️', label: 'Store' },
   { to: '/leaderboard', icon: '🏆', label: 'Leaderboard' },
   { to: '/history', icon: '🕘', label: 'History' },
+  { to: '/settings', icon: '⚙️', label: 'Settings' },
 ];
 export function HomePage() { const score = useAppStore((state) => state.score); return <main className="page"><span className="brand">MTX</span><section className="hero"><span className="phase-badge">Telegram Mini App</span><h1>Tap. Earn. Level up.</h1><p>Your current balance is <strong>{score} MTX</strong>.</p><Link className="button primary launch" to="/game">Play MTX</Link></section><nav className="home-shortcuts" aria-label="MTX features">{shortcuts.map((item) => <Link key={item.to} to={item.to}><span aria-hidden="true">{item.icon}</span><strong>{item.label}</strong></Link>)}</nav></main>; }
