@@ -12,4 +12,8 @@ describe('device preferences', () => {
     const preferences = loadPreferences({ getItem: () => '{broken' });
     assert.deepEqual(preferences, { theme: 'system', language: 'en', sound: true, haptics: true, lowPower: false });
   });
+
+  it('accepts Arabic as an interface language', () => {
+    assert.equal(loadPreferences({ getItem: () => JSON.stringify({ language: 'ar' }) }).language, 'ar');
+  });
 });

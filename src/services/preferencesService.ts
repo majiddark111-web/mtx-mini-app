@@ -1,5 +1,5 @@
 export type ThemePreference = 'system' | 'dark' | 'light';
-export type LanguagePreference = 'en' | 'fa';
+export type LanguagePreference = 'en' | 'fa' | 'ar';
 export interface AppPreferences { theme: ThemePreference; language: LanguagePreference; sound: boolean; haptics: boolean; lowPower: boolean; }
 
 const STORAGE_KEY = 'mtx.preferences.v1';
@@ -12,7 +12,7 @@ function valid(value: unknown): AppPreferences {
   if (!value || typeof value !== 'object') return DEFAULTS;
   const input = value as Partial<AppPreferences>;
   const theme = input.theme === 'light' || input.theme === 'dark' || input.theme === 'system' ? input.theme : DEFAULTS.theme;
-  const language = input.language === 'fa' || input.language === 'en' ? input.language : DEFAULTS.language;
+  const language = input.language === 'fa' || input.language === 'ar' || input.language === 'en' ? input.language : DEFAULTS.language;
   return { theme, language, sound: typeof input.sound === 'boolean' ? input.sound : DEFAULTS.sound, haptics: typeof input.haptics === 'boolean' ? input.haptics : DEFAULTS.haptics, lowPower: typeof input.lowPower === 'boolean' ? input.lowPower : DEFAULTS.lowPower };
 }
 
@@ -26,7 +26,7 @@ export function applyPreferences(preferences = getPreferences()): void {
   document.documentElement.dataset.appTheme = preferences.theme;
   document.documentElement.dataset.lowPower = String(preferences.lowPower);
   document.documentElement.lang = preferences.language;
-  document.documentElement.dir = preferences.language === 'fa' ? 'rtl' : 'ltr';
+  document.documentElement.dir = preferences.language === 'fa' || preferences.language === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.style.colorScheme = preferences.theme === 'system' ? 'dark light' : preferences.theme;
 }
 
