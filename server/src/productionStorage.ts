@@ -1,6 +1,6 @@
 import type { ServerGameState } from './gameEngine.ts';
 import { GameStorage, type BatchDeduplicator, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
-import type { LeaderboardEntry, LeaderboardRepository } from './social.ts';
+import { leaderboardPeriodKey, type LeaderboardEntry, type LeaderboardRepository, type LeaderboardScope } from './social.ts';
 
 export interface RedisCommands { command<T>(parts: string[]): Promise<T>; }
 export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; transaction?<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T>; }
@@ -58,9 +58,10 @@ export function productionGameStorage(redis: RedisCommands, database: PostgresQu
 export class RedisLeaderboardRepository implements LeaderboardRepository {
   constructor(privateRedis: RedisCommands) { this.redis = privateRedis; }
   private readonly redis: RedisCommands;
-  async record(userId: string, username: string, coins: number): Promise<void> { await this.redis.command(['ZADD', 'mtx:leaderboard:global', String(coins), userId]); await this.redis.command(['HSET', 'mtx:leaderboard:names', userId, username]); }
-  async leaders(limit: number): Promise<LeaderboardEntry[]> {
-    const values = await this.redis.command<string[]>(['ZREVRANGE', 'mtx:leaderboard:global', '0', String(Math.max(0, limit - 1)), 'WITHSCORES']); const entries: LeaderboardEntry[] = [];
+  private key(scope: LeaderboardScope, now: number): string { return scope === 'global' ? 'mtx:leaderboard:global' : `mtx:leaderboard:${scope}:${leaderboardPeriodKey(scope, now)}`; }
+  async record(userId: string, username: string, coins: number, now = Date.now()): Promise<void> { for (const scope of ['global', 'weekly', 'monthly', 'season'] as const) await this.redis.command(['ZADD', this.key(scope, now), String(coins), userId]); await this.redis.command(['HSET', 'mtx:leaderboard:names', userId, username]); }
+  async leaders(limit: number, scope: LeaderboardScope = 'global', now = Date.now()): Promise<LeaderboardEntry[]> {
+    const values = await this.redis.command<string[]>(['ZREVRANGE', this.key(scope, now), '0', String(Math.max(0, limit - 1)), 'WITHSCORES']); const entries: LeaderboardEntry[] = [];
     for (let index = 0; index < values.length; index += 2) { const userId = values[index]; const username = await this.redis.command<string | null>(['HGET', 'mtx:leaderboard:names', userId]); entries.push({ userId, username: username ?? userId, coins: Number(values[index + 1]), rank: index / 2 + 1 }); }
     return entries;
   }

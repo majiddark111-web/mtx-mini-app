@@ -4,11 +4,20 @@ import type { SocialPersistence } from './socialPersistence.ts';
 
 export interface MissionView { id: string; title: string; target: number; progress: number; reward: number; claimed: boolean; period: 'daily' | 'weekly' | 'monthly'; }
 export interface LeaderboardEntry { userId: string; username: string; coins: number; rank: number; }
-export interface LeaderboardRepository { record(userId: string, username: string, coins: number): Promise<void>; leaders(limit: number): Promise<LeaderboardEntry[]>; }
+export type LeaderboardScope = 'global' | 'weekly' | 'monthly' | 'season';
+export interface LeaderboardRepository { record(userId: string, username: string, coins: number, now?: number): Promise<void>; leaders(limit: number, scope?: LeaderboardScope, now?: number): Promise<LeaderboardEntry[]>; }
+export const leaderboardPeriodKey = (scope: LeaderboardScope, now: number): string => {
+  const date = new Date(now);
+  if (scope === 'global') return 'global';
+  if (scope === 'monthly') return date.toISOString().slice(0, 7);
+  if (scope === 'season') return `${date.getUTCFullYear()}-Q${Math.floor(date.getUTCMonth() / 3) + 1}`;
+  const day = date.getUTCDay() || 7; date.setUTCDate(date.getUTCDate() - day + 1);
+  return date.toISOString().slice(0, 10);
+};
 export class MemoryLeaderboardRepository implements LeaderboardRepository {
-  private scores = new Map<string, { username: string; coins: number }>();
-  async record(userId: string, username: string, coins: number): Promise<void> { this.scores.set(userId, { username, coins }); }
-  async leaders(limit: number): Promise<LeaderboardEntry[]> { return [...this.scores.entries()].sort((a, b) => b[1].coins - a[1].coins).slice(0, limit).map(([userId, value], index) => ({ userId, username: value.username, coins: value.coins, rank: index + 1 })); }
+  private scores = new Map<string, Map<string, { username: string; coins: number }>>();
+  async record(userId: string, username: string, coins: number, now = Date.now()): Promise<void> { for (const scope of ['global', 'weekly', 'monthly', 'season'] as const) { const key = `${scope}:${leaderboardPeriodKey(scope, now)}`; const board = this.scores.get(key) ?? new Map(); board.set(userId, { username, coins }); this.scores.set(key, board); } }
+  async leaders(limit: number, scope: LeaderboardScope = 'global', now = Date.now()): Promise<LeaderboardEntry[]> { const board = this.scores.get(`${scope}:${leaderboardPeriodKey(scope, now)}`) ?? new Map(); return [...board.entries()].sort((a, b) => b[1].coins - a[1].coins).slice(0, limit).map(([userId, value], index) => ({ userId, username: value.username, coins: value.coins, rank: index + 1 })); }
 }
 interface ReferralRecord { referrerId: string; refereeId: string; deviceHash: string; createdAt: number; }
 
@@ -81,7 +90,7 @@ export class SocialStorage {
     if (this.persistence) { const outcome = await this.persistence.createReferral(referrerId, refereeId, deviceHash, now, referrer, referee); if (outcome.result === 'referee-used') throw new Error('REFERRAL_ALREADY_USED'); if (outcome.result === 'device-used') throw new Error('REFERRAL_DEVICE_REUSED'); if (!outcome.referee || !outcome.referrer) throw new Error('REFERRAL_PERSISTENCE_FAILED'); game.saveHot(outcome.referee, false); game.saveHot(outcome.referrer, false); } else { this.referrals.set(refereeId, { referrerId, refereeId, deviceHash, createdAt: now }); this.referralDevices.add(deviceHash); game.saveHot({ ...referee, coins: referee.coins + 250, version: referee.version + 1 }); game.saveHot({ ...referrer, coins: referrer.coins + 500, version: referrer.version + 1 }); }
   }
 
-  recordScore(userId: string, username: string, coins: number): Promise<void> { return this.leaderboard.record(userId, username, coins); }
-  leaders(limit = 100): Promise<LeaderboardEntry[]> { return this.leaderboard.leaders(limit); }
+  recordScore(userId: string, username: string, coins: number, now = Date.now()): Promise<void> { return this.leaderboard.record(userId, username, coins, now); }
+  async leaders(scope: LeaderboardScope | 'friends' = 'global', userId?: string, limit = 100, now = Date.now()): Promise<LeaderboardEntry[]> { const boardScope = scope === 'friends' ? 'global' : scope; const entries = await this.leaderboard.leaders(scope === 'friends' ? 10_000 : limit, boardScope, now); if (scope !== 'friends' || !userId) return entries; const network = this.persistence ? await this.persistence.referralNetwork(userId) : [...this.referrals.values()].filter((item) => item.referrerId === userId || item.refereeId === userId).flatMap((item) => [item.referrerId, item.refereeId]); const allowed = new Set([userId, ...network]); return entries.filter((entry) => allowed.has(entry.userId)).slice(0, limit).map((entry, index) => ({ ...entry, rank: index + 1 })); }
   leaderboardRepository(): LeaderboardRepository { return this.leaderboard; }
 }

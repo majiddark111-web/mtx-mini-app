@@ -278,7 +278,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const body = referralAcceptSchema.parse(await request.json()); await socialStorage.acceptReferral(userId, body.code, body.deviceHash, gameStorage, Date.now()); return json({ accepted: true }, 200, cors);
     }
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
-      const player = await authenticatedPlayer(request, env); if (!player) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(player.sub, Date.now()); await socialStorage.recordScore(player.sub, playerName(player), state.coins); return json({ entries: await socialStorage.leaders() }, 200, cors);
+      const player = await authenticatedPlayer(request, env); if (!player) return json({ error: 'Unauthorized' }, 401, cors); const scope = url.searchParams.get('scope') ?? 'global'; if (!['global', 'friends', 'weekly', 'monthly', 'season'].includes(scope)) return json({ error: 'Invalid leaderboard scope' }, 400, cors); const now = Date.now(); const state = await gameStorage.stateFor(player.sub, now); await socialStorage.recordScore(player.sub, playerName(player), state.coins, now); return json({ entries: await socialStorage.leaders(scope as 'global' | 'friends' | 'weekly' | 'monthly' | 'season', player.sub, 100, now) }, 200, cors);
     }
     if (url.pathname === '/api/profile' && request.method === 'GET') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);

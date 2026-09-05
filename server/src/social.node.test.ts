@@ -46,13 +46,22 @@ describe('phase 6 social systems', () => {
   it('sorts a simulated 10,000-user leaderboard without database queries', async () => {
     const social = new SocialStorage();
     for (let index = 0; index < 10_000; index += 1) await social.recordScore(String(index), `player-${index}`, index);
-    const leaders = await social.leaders(100); assert.equal(leaders.length, 100); assert.equal(leaders[0].coins, 9_999); assert.equal(leaders[99].coins, 9_900);
+    const leaders = await social.leaders('global', undefined, 100); assert.equal(leaders.length, 100); assert.equal(leaders[0].coins, 9_999); assert.equal(leaders[99].coins, 9_900);
+  });
+
+  it('keeps weekly boards separate and limits friends to real referral relationships', async () => {
+    const social = new SocialStorage(); const game = new GameStorage(); const weekOne = Date.UTC(2026, 7, 17); const weekTwo = weekOne + 7 * 86_400_000;
+    await social.recordScore('1', 'player-1', 100, weekOne); await social.recordScore('2', 'player-2', 200, weekOne); await social.recordScore('3', 'player-3', 300, weekOne);
+    await social.acceptReferral('2', 'MTX-1', 'f'.repeat(64), game, weekOne);
+    assert.deepEqual((await social.leaders('friends', '1', 100, weekOne)).map((entry) => entry.userId), ['2', '1']);
+    await social.recordScore('1', 'player-1', 400, weekTwo);
+    assert.deepEqual((await social.leaders('weekly', '1', 100, weekTwo)).map((entry) => entry.userId), ['1']);
   });
 
   it('uses Redis sorted-set commands for production rankings', async () => {
     class FakeRedis implements RedisCommands { commands: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.commands.push(parts); if (parts[0] === 'ZREVRANGE') return ['2', '900', '1', '500'] as T; if (parts[0] === 'HGET') return `player-${parts[2]}` as T; return 1 as T; } }
     const redis = new FakeRedis(); const repository = new RedisLeaderboardRepository(redis); await repository.record('1', 'player-1', 500); const leaders = await repository.leaders(2);
-    assert.equal(leaders[0].coins, 900); assert.equal(leaders[0].rank, 1); assert.deepEqual(redis.commands.map((parts) => parts[0]), ['ZADD', 'HSET', 'ZREVRANGE', 'HGET', 'HGET']);
+    assert.equal(leaders[0].coins, 900); assert.equal(leaders[0].rank, 1); assert.deepEqual(redis.commands.map((parts) => parts[0]), ['ZADD', 'ZADD', 'ZADD', 'ZADD', 'HSET', 'ZREVRANGE', 'HGET', 'HGET']);
   });
 
   it('validates combo and cipher on the server and prevents repeat claims', async () => {

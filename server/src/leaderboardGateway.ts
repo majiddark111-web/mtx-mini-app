@@ -14,10 +14,9 @@ export class LeaderboardGateway {
       const value = JSON.parse(message) as { type?: string; token?: string };
       if (value.type !== 'auth' || typeof value.token !== 'string') throw new Error('Invalid auth message');
       await verifyJwt(value.token, this.jwtSecret);
-      const publish = async () => socket.send(JSON.stringify({ type: 'leaderboard', entries: await this.leaderboard.leaders(100) }));
+      const publish = async () => socket.send(JSON.stringify({ type: 'leaderboard', entries: await this.leaderboard.leaders(100, 'global') }));
       await publish();
       return this.pubsub.subscribe('mtx:leaderboard:updates', () => { void publish(); });
     } catch { socket.close(4401, 'Unauthorized'); throw new Error('Unauthorized'); }
   }
 }
-
