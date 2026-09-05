@@ -1,0 +1,15 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useI18n } from '../hooks/useI18n';
+import { fetchNotifications, markAllNotificationsRead, type NotificationKind, type NotificationResult, type PlayerNotification } from '../services/notificationService';
+import { useAppStore } from '../store/useAppStore';
+
+const icon: Record<NotificationKind, string> = { announcement: '📣', upgrade: '⬆️', purchase: '🛍️', payment: '💎', reward: '🎁' };
+export function NotificationsPage() {
+  const auth = useAppStore((state) => state.authStatus); const { text, date } = useI18n(); const [data, setData] = useState<NotificationResult>({ notifications: [], unreadCount: 0 }); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
+  const load = async () => { setLoading(true); setError(''); try { setData(await fetchNotifications()); } catch { setError(text('Notifications could not load.', 'اعلان‌ها بارگذاری نشدند.')); } finally { setLoading(false); } };
+  useEffect(() => { if (auth === 'authenticated') void load(); }, [auth]);
+  const translatedTitle = (item: PlayerNotification) => item.kind === 'upgrade' ? text('Upgrade activated', 'ارتقا فعال شد') : item.kind === 'purchase' ? text('Purchase completed', 'خرید تکمیل شد') : item.kind === 'payment' ? text('Payment update', 'به‌روزرسانی پرداخت') : item.kind === 'reward' ? text('Reward received', 'جایزه دریافت شد') : item.title;
+  const markAll = async () => { await markAllNotificationsRead(); setData((current) => ({ unreadCount: 0, notifications: current.notifications.map((item) => ({ ...item, read: true })) })); };
+  return <main className="page commerce-page"><Link className="brand" to="/">MTX</Link><header className="commerce-header"><div><h1>{text('Notifications', 'اعلان‌ها')}</h1><p>{text('Game activity and official announcements', 'فعالیت بازی و اطلاعیه‌های رسمی')}</p></div>{data.unreadCount > 0 && <button className="button ghost" onClick={() => void markAll()}>{text('Mark all read', 'خواندن همه')}</button>}</header>{auth !== 'authenticated' ? <section className="empty-state">{text('Open MTX inside Telegram to view notifications.', 'برای مشاهده اعلان‌ها، MTX را داخل تلگرام باز کنید.')}</section> : loading ? <section className="empty-state">{text('Loading notifications…', 'در حال بارگذاری اعلان‌ها…')}</section> : error ? <section className="empty-state">{error}<button className="button ghost" onClick={() => void load()}>{text('Retry', 'تلاش دوباره')}</button></section> : data.notifications.length === 0 ? <section className="empty-state">{text('No notifications yet.', 'هنوز اعلانی وجود ندارد.')}</section> : <section className="notification-list">{data.notifications.map((item) => <article className={`notification-item${item.read ? '' : ' unread'}`} key={item.id}><span>{icon[item.kind]}</span><div><strong>{translatedTitle(item)}</strong><p>{item.message}</p><time>{date(item.createdAt)}</time></div>{!item.read && <i title={text('Unread', 'خوانده‌نشده')} />}</article>)}</section>}</main>;
+}

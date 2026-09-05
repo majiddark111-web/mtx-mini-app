@@ -33,6 +33,13 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .bottom-nav a.active { color: #ffd21e; }
 .bottom-nav span { font-size: 1.25rem; }
 .bottom-nav small { font-size: .66rem; }
+.notification-bell { align-items: center; background: #1c1c1c; border: 1px solid #4a4120; border-radius: 50%; bottom: 82px; color: #fff; display: flex; font-size: 1.25rem; height: 46px; justify-content: center; position: fixed; right: max(14px, calc((100vw - 650px) / 2 + 14px)); text-decoration: none; width: 46px; z-index: 19; }
+.notification-bell b { background: #e24242; border: 2px solid #111; border-radius: 999px; color: #fff; font-size: .6rem; min-width: 20px; padding: 2px 4px; position: absolute; right: -5px; text-align: center; top: -5px; }
+[dir="rtl"] .notification-bell { left: max(14px, calc((100vw - 650px) / 2 + 14px)); right: auto; }
+.notification-list { display: flex; flex-direction: column; gap: 9px; }
+.notification-item { align-items: center; background: #151515; border: 1px solid #303030; border-radius: 16px; display: grid; gap: 11px; grid-template-columns: auto 1fr auto; padding: 14px; }
+.notification-item.unread { background: linear-gradient(135deg, rgba(255,210,30,.13), #151515); border-color: #6c5a18; }
+.notification-item > span { font-size: 1.45rem; }.notification-item p { color: #aaa; font-size: .78rem; margin: 5px 0; }.notification-item time { color: #777; font-size: .68rem; }.notification-item i { background: #ffd21e; border-radius: 50%; height: 9px; width: 9px; }
 .game-screen { height: 100dvh; overflow: hidden; position: relative; }
 .galaxy { animation: move-background 120s linear infinite; background: url('/galaxy.png') repeat center/cover; inset: 0; opacity: .32; position: absolute; }
 .game-content { align-items: center; display: flex; flex-direction: column; height: 100%; justify-content: space-between; padding: 20px; position: relative; z-index: 2; }

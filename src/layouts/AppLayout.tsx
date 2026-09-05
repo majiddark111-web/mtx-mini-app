@@ -7,10 +7,11 @@ import { useInventorySync } from '../hooks/useInventorySync';
 import { BottomNavigation } from '../components/navigation/BottomNavigation';
 import { useEffect } from 'react';
 import { initializePreferences } from '../services/preferencesService';
+import { NotificationBell } from '../components/notifications/NotificationBell';
 
 export function AppLayout() {
   useEffect(() => initializePreferences(), []);
   useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync(); useInventorySync();
   const location = useLocation();
-  return <div className="app-shell"><Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <BottomNavigation />}</div>;
+  return <div className="app-shell"><Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <><NotificationBell /><BottomNavigation /></>}</div>;
 }

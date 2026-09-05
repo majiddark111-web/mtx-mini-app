@@ -44,7 +44,7 @@ describe('phase 6 production infrastructure', () => {
     class CaptureDatabase implements PostgresQueries { statements: string[] = []; transactions = 0; async transaction<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T> { this.transactions += 1; return operation(this); } async query<T>(sql: string): Promise<{ rows: T[] }> { this.statements.push(sql); return { rows: [] }; } }
     const database = new CaptureDatabase(); const persistence = new PostgresAdminPersistence(database); const now = Date.now();
     await persistence.setBanned('admin-1', 'user-1', true, now);
-    await persistence.notify('admin-1', { id: crypto.randomUUID(), title: 'Notice', message: 'Message', createdAt: now });
+    await persistence.notify('admin-1', { id: crypto.randomUUID(), title: 'Notice', message: 'Message', createdAt: now, expiresAt: now + 30 * 86_400_000 });
     assert.equal(database.transactions, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_admin_bans'))); assert.equal(database.statements.filter((sql) => sql.includes('mtx_admin_logs')).length, 2); assert.ok(database.statements.some((sql) => sql.includes('mtx_notifications')));
   });
 

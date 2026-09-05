@@ -2,7 +2,7 @@ import { issueJwt, verifyJwt } from './jwt.ts';
 import { applyOfflineProfit, applyTapBatch } from './gameEngine.ts';
 import { GameStorage } from './gameStorage.ts';
 import { RateLimiter, type RequestRateLimiter } from './rateLimiter.ts';
-import { authRequestSchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
+import { authRequestSchema, emptyBodySchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
 import { validateTelegramInitData } from './telegramAuth.ts';
 import { loadEconomyConfig } from './economyConfigProvider.ts';
 import { catalogFor, CommerceStorage } from './commerce.ts';
@@ -17,6 +17,7 @@ import { adminBanSchema, adminEventSchema, adminLoginSchema, adminNotificationSc
 import type { Env } from './types.ts';
 import { AntiCheatMonitor, deriveSessionKey, MemoryReplayProtection, type ReplayProtection, validateSignedRequest } from './requestSecurity.ts';
 import { rewardHistory } from './rewardHistory.ts';
+import { markNotificationsRead, notificationReadAt } from './notificationReadState.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
@@ -183,6 +184,28 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
       const [purchases, payments, rewards] = await Promise.all([commerceStorage.purchaseHistory(userId), commerceStorage.paymentHistory(userId), env.POSTGRES ? rewardHistory(env.POSTGRES, userId) : Promise.resolve([])]);
       return json({ purchases, payments, rewards }, 200, cors);
+    }
+    if (url.pathname === '/api/notifications' && request.method === 'GET') {
+      emptyQuerySchema.parse(Object.fromEntries(url.searchParams));
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const now = Date.now();
+      const [adminSnapshot, purchases, payments, rewards, readAt] = await Promise.all([adminStorage.snapshot(), commerceStorage.purchaseHistory(userId), commerceStorage.paymentHistory(userId), env.POSTGRES ? rewardHistory(env.POSTGRES, userId) : Promise.resolve([]), env.POSTGRES ? notificationReadAt(env.POSTGRES, userId) : Promise.resolve(0)]);
+      const notifications = [
+        ...adminSnapshot.notifications.filter((item) => item.expiresAt > now).map((item) => ({ id: `announcement:${item.id}`, kind: 'announcement', title: item.title, message: item.message, createdAt: item.createdAt })),
+        ...purchases.map((item) => ({ id: `purchase:${item.id}`, kind: item.itemId.startsWith('upgrade:') ? 'upgrade' : 'purchase', title: item.itemId.startsWith('upgrade:') ? 'Upgrade activated' : 'Purchase completed', message: `${item.itemId} · ${item.price.toLocaleString()} MTX`, createdAt: item.createdAt })),
+        ...payments.map((item) => ({ id: `payment:${item.transactionId}`, kind: 'payment', title: `Payment ${item.status}`, message: item.status === 'confirmed' ? `${item.creditedCoins.toLocaleString()} MTX credited` : `${item.amount} ${item.asset}`, createdAt: item.createdAt })),
+        ...rewards.map((item) => ({ id: `reward:${item.id}`, kind: 'reward', title: 'Reward received', message: `${item.title} · ${item.amount.toLocaleString()} MTX`, createdAt: item.createdAt })),
+      ].sort((a, b) => b.createdAt - a.createdAt).slice(0, 200).map((item) => ({ ...item, read: item.createdAt <= readAt }));
+      return json({ notifications, unreadCount: notifications.filter((item) => !item.read).length }, 200, cors);
+    }
+    if (url.pathname === '/api/notifications/read-all' && request.method === 'POST') {
+      const userId = await authenticatedUserId(request, env);
+      if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      emptyBodySchema.parse(await request.json());
+      if (!env.POSTGRES) return json({ error: 'Persistent infrastructure unavailable' }, 503, cors);
+      await markNotificationsRead(env.POSTGRES, userId, Date.now());
+      return json({ ok: true }, 200, cors);
     }
     if (url.pathname === '/api/inventory/activate' && request.method === 'POST') {
       const userId = await authenticatedUserId(request, env);

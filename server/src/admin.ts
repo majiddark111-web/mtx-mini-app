@@ -1,5 +1,5 @@
 export interface AdminLog { id: string; adminId: string; action: string; target?: string; createdAt: number; }
-export interface AdminNotification { id: string; title: string; message: string; createdAt: number; }
+export interface AdminNotification { id: string; title: string; message: string; createdAt: number; expiresAt: number; }
 export interface AdminEvent { id: string; title: string; startsAt: number; endsAt: number; multiplier: number; }
 
 export interface AdminSnapshot { banned: string[]; logs: AdminLog[]; notifications: AdminNotification[]; events: AdminEvent[]; }
@@ -26,7 +26,7 @@ export class AdminStorage {
   isBanned(userId: string): Promise<boolean> { return this.persistence.isBanned(userId); }
   ban(adminId: string, userId: string): Promise<void> { return this.persistence.setBanned(adminId, userId, true, Date.now()); }
   unban(adminId: string, userId: string): Promise<void> { return this.persistence.setBanned(adminId, userId, false, Date.now()); }
-  async notify(adminId: string, title: string, message: string, now: number): Promise<AdminNotification> { const item = { id: crypto.randomUUID(), title, message, createdAt: now }; await this.persistence.notify(adminId, item); return item; }
+  async notify(adminId: string, title: string, message: string, now: number): Promise<AdminNotification> { const item = { id: crypto.randomUUID(), title, message, createdAt: now, expiresAt: now + 30 * 86_400_000 }; await this.persistence.notify(adminId, item); return item; }
   async createEvent(adminId: string, title: string, startsAt: number, endsAt: number, multiplier: number): Promise<AdminEvent> { const item = { id: crypto.randomUUID(), title, startsAt, endsAt, multiplier }; await this.persistence.createEvent(adminId, item); return item; }
   snapshot(): Promise<AdminSnapshot> { return this.persistence.snapshot(); }
 }
