@@ -5,6 +5,7 @@ import { createNodeInfrastructure } from './nodeInfrastructure.mjs';
 import { closeHttpServer, startFetchServer } from './nodeHttp.mjs';
 import { verifyTelegramBotIdentity } from './botIdentity.mjs';
 import { createTonPaymentVerifier } from './tonPaymentVerifier.mjs';
+import { createAdminAuth } from './adminCredentials.mjs';
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -25,10 +26,13 @@ const appOriginValue = required('APP_ORIGIN');
 let appOrigin;
 try { appOrigin = new URL(appOriginValue).origin; }
 catch { throw new Error('APP_ORIGIN must be a valid absolute URL'); }
+const adminValues = [process.env.ADMIN_USERNAME, process.env.ADMIN_PASSWORD_HASH, process.env.ADMIN_TOTP_SECRET].map((value) => value?.trim());
+if (adminValues.some(Boolean) && !adminValues.every(Boolean)) throw new Error('ADMIN_USERNAME, ADMIN_PASSWORD_HASH and ADMIN_TOTP_SECRET must be configured together');
 const environment = {
   TELEGRAM_BOT_TOKEN: telegramBotToken,
   JWT_SECRET: required('JWT_SECRET'),
   ADMIN_JWT_SECRET: process.env.ADMIN_JWT_SECRET,
+  ADMIN_AUTH: adminValues.every(Boolean) ? createAdminAuth({ username: adminValues[0], passwordHash: adminValues[1], totpSecret: adminValues[2] }) : undefined,
   APP_ORIGIN: appOrigin,
   AUTH_MAX_AGE_SECONDS: process.env.AUTH_MAX_AGE_SECONDS?.trim() ?? '300',
   AUTH_LOG: (message) => process.stderr.write(`Telegram authentication rejected: ${message}\n`),
