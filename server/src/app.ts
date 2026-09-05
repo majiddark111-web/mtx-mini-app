@@ -18,6 +18,7 @@ import type { Env } from './types.ts';
 import { AntiCheatMonitor, deriveSessionKey, MemoryReplayProtection, type ReplayProtection, validateSignedRequest } from './requestSecurity.ts';
 import { rewardHistory } from './rewardHistory.ts';
 import { markNotificationsRead, notificationReadAt } from './notificationReadState.ts';
+import { achievementsFor } from './achievements.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
@@ -280,7 +281,10 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const player = await authenticatedPlayer(request, env); if (!player) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(player.sub, Date.now()); await socialStorage.recordScore(player.sub, playerName(player), state.coins); return json({ entries: await socialStorage.leaders() }, 200, cors);
     }
     if (url.pathname === '/api/profile' && request.method === 'GET') {
-      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const state = await gameStorage.stateFor(userId, Date.now()); return json({ state, inventory: await commerceStorage.inventory(userId), referral: await socialStorage.referralStatus(userId), payments: await commerceStorage.paymentHistory(userId) }, 200, cors);
+      const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);
+      const state = await gameStorage.stateFor(userId, Date.now());
+      const [inventory, referral, payments, purchases] = await Promise.all([commerceStorage.inventory(userId), socialStorage.referralStatus(userId), commerceStorage.paymentHistory(userId), commerceStorage.purchaseHistory(userId)]);
+      return json({ state, inventory, referral, payments, achievements: achievementsFor(state, purchases.length, referral.invited) }, 200, cors);
     }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {
