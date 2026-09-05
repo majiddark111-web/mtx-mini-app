@@ -1,9 +1,4 @@
 import { Link } from 'react-router-dom';
+import { useI18n } from '../../hooks/useI18n';
 import { Modal } from '../common/Modal';
-
-export function BoostModal({ onClose }: { onClose: () => void }) {
-  return <Modal title="⚡ Boost & Upgrades" onClose={onClose}>
-    <p className="muted">Permanent upgrades are purchased securely from the server. Consumable boosts are used from Inventory.</p>
-    <div className="stack"><Link className="button primary" to="/store?category=upgrade">⬆️ Open Upgrade Store</Link><Link className="button ghost" to="/inventory">🎒 Open Inventory · Use boosts</Link></div>
-  </Modal>;
-}
+export function BoostModal({ onClose }: { onClose: () => void }) { const { text } = useI18n(); return <Modal title={text('⚡ Boost & Upgrades', '⚡ بوست و ارتقا')} onClose={onClose}><p className="muted">{text('Permanent upgrades are purchased securely from the server. Consumable boosts are used from Inventory.', 'ارتقاهای دائمی با امنیت از سرور خریداری می‌شوند. بوست‌های مصرفی از دارایی استفاده می‌شوند.')}</p><div className="stack"><Link className="button primary" to="/store?category=upgrade">⬆️ {text('Open Upgrade Store', 'بازکردن فروشگاه ارتقا')}</Link><Link className="button ghost" to="/inventory">🎒 {text('Open Inventory · Use boosts', 'دارایی · استفاده از بوست‌ها')}</Link></div></Modal>; }

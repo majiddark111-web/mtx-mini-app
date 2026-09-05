@@ -1,13 +1,5 @@
 import { MISSIONS } from '../../constants/game';
+import { useI18n } from '../../hooks/useI18n';
 import { hapticTap, openExternalLink } from '../../services/telegramService';
 import { Modal } from '../common/Modal';
-
-export function EarnModal({ onClose }: { onClose: () => void }) {
-  return <Modal title="🎯 Earn Tasks" onClose={onClose}>
-    <p className="muted">Choose an available task to earn MTX rewards.</p>
-    <div className="stack">{MISSIONS.map((mission) => <article className="mission-card" key={mission.id}>
-      <span className="mission-icon">{mission.icon}</span><div><strong>{mission.title}</strong><p>{mission.subtitle}</p><span className="gold">+{mission.reward} MTX</span></div>
-      <button className="button primary" type="button" onClick={() => { hapticTap(); openExternalLink(mission.url); }}>Open</button>
-    </article>)}</div>
-  </Modal>;
-}
+export function EarnModal({ onClose }: { onClose: () => void }) { const { text, number } = useI18n(); return <Modal title={text('🎯 Earn Tasks', '🎯 وظایف درآمدی')} onClose={onClose}><p className="muted">{text('Choose an available task to earn MTX rewards.', 'برای دریافت جایزه MTX یکی از وظایف را انتخاب کنید.')}</p><div className="stack">{MISSIONS.map((mission) => <article className="mission-card" key={mission.id}><span className="mission-icon">{mission.icon}</span><div><strong>{mission.title}</strong><p>{text(mission.subtitle, mission.id === 'telegram' ? 'عضویت در کانال رسمی' : mission.id === 'youtube' ? 'عضویت در کانال یوتیوب' : mission.id === 'instagram' ? 'دنبال‌کردن صفحه اینستاگرام' : 'دنبال‌کردن جامعه ما')}</p><span className="gold">+{number(mission.reward)} MTX</span></div><button className="button primary" type="button" onClick={() => { hapticTap(); openExternalLink(mission.url); }}>{text('Open', 'بازکردن')}</button></article>)}</div></Modal>; }

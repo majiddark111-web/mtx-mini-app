@@ -1,8 +1,9 @@
 export type ThemePreference = 'system' | 'dark' | 'light';
-export interface AppPreferences { theme: ThemePreference; sound: boolean; haptics: boolean; lowPower: boolean; }
+export type LanguagePreference = 'en' | 'fa';
+export interface AppPreferences { theme: ThemePreference; language: LanguagePreference; sound: boolean; haptics: boolean; lowPower: boolean; }
 
 const STORAGE_KEY = 'mtx.preferences.v1';
-const DEFAULTS: AppPreferences = { theme: 'system', sound: true, haptics: true, lowPower: false };
+const DEFAULTS: AppPreferences = { theme: 'system', language: 'en', sound: true, haptics: true, lowPower: false };
 const listeners = new Set<() => void>();
 let cached: AppPreferences | undefined;
 let tapAudioContext: AudioContext | undefined;
@@ -11,7 +12,8 @@ function valid(value: unknown): AppPreferences {
   if (!value || typeof value !== 'object') return DEFAULTS;
   const input = value as Partial<AppPreferences>;
   const theme = input.theme === 'light' || input.theme === 'dark' || input.theme === 'system' ? input.theme : DEFAULTS.theme;
-  return { theme, sound: typeof input.sound === 'boolean' ? input.sound : DEFAULTS.sound, haptics: typeof input.haptics === 'boolean' ? input.haptics : DEFAULTS.haptics, lowPower: typeof input.lowPower === 'boolean' ? input.lowPower : DEFAULTS.lowPower };
+  const language = input.language === 'fa' || input.language === 'en' ? input.language : DEFAULTS.language;
+  return { theme, language, sound: typeof input.sound === 'boolean' ? input.sound : DEFAULTS.sound, haptics: typeof input.haptics === 'boolean' ? input.haptics : DEFAULTS.haptics, lowPower: typeof input.lowPower === 'boolean' ? input.lowPower : DEFAULTS.lowPower };
 }
 
 export function loadPreferences(storage: Pick<Storage, 'getItem'> = localStorage): AppPreferences {
@@ -23,6 +25,8 @@ export function getPreferences(): AppPreferences { return cached ??= loadPrefere
 export function applyPreferences(preferences = getPreferences()): void {
   document.documentElement.dataset.appTheme = preferences.theme;
   document.documentElement.dataset.lowPower = String(preferences.lowPower);
+  document.documentElement.lang = preferences.language;
+  document.documentElement.dir = preferences.language === 'fa' ? 'rtl' : 'ltr';
   document.documentElement.style.colorScheme = preferences.theme === 'system' ? 'dark light' : preferences.theme;
 }
 

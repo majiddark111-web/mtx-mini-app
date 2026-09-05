@@ -1,11 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useI18n } from '../hooks/useI18n';
 import { useAppStore } from '../store/useAppStore';
-const shortcuts = [
-  { to: '/referral', icon: '👥', label: 'Invite Friends' },
-  { to: '/daily-reward', icon: '🎁', label: 'Daily Reward' },
-  { to: '/store', icon: '🛍️', label: 'Store' },
-  { to: '/leaderboard', icon: '🏆', label: 'Leaderboard' },
-  { to: '/history', icon: '🕘', label: 'History' },
-  { to: '/settings', icon: '⚙️', label: 'Settings' },
-];
-export function HomePage() { const score = useAppStore((state) => state.score); return <main className="page"><span className="brand">MTX</span><section className="hero"><span className="phase-badge">Telegram Mini App</span><h1>Tap. Earn. Level up.</h1><p>Your current balance is <strong>{score} MTX</strong>.</p><Link className="button primary launch" to="/game">Play MTX</Link></section><nav className="home-shortcuts" aria-label="MTX features">{shortcuts.map((item) => <Link key={item.to} to={item.to}><span aria-hidden="true">{item.icon}</span><strong>{item.label}</strong></Link>)}</nav></main>; }
+const shortcuts = [{ to: '/referral', icon: '👥', en: 'Invite Friends', fa: 'دعوت دوستان' }, { to: '/daily-reward', icon: '🎁', en: 'Daily Reward', fa: 'جایزه روزانه' }, { to: '/store', icon: '🛍️', en: 'Store', fa: 'فروشگاه' }, { to: '/leaderboard', icon: '🏆', en: 'Leaderboard', fa: 'رتبه‌بندی' }, { to: '/history', icon: '🕘', en: 'History', fa: 'تاریخچه' }, { to: '/settings', icon: '⚙️', en: 'Settings', fa: 'تنظیمات' }];
+export function HomePage() { const score = useAppStore((state) => state.score); const { text, number } = useI18n(); return <main className="page"><span className="brand">MTX</span><section className="hero"><span className="phase-badge">{text('Telegram Mini App', 'مینی‌اپ تلگرام')}</span><h1>{text('Tap. Earn. Level up.', 'تپ کن، درآمد بگیر، ارتقا بده.')}</h1><p>{text('Your current balance is', 'موجودی فعلی شما')} <strong>{number(score)} MTX</strong>.</p><Link className="button primary launch" to="/game">{text('Play MTX', 'بازی MTX')}</Link></section><nav className="home-shortcuts" aria-label={text('MTX features', 'امکانات MTX')}>{shortcuts.map((item) => <Link key={item.to} to={item.to}><span aria-hidden="true">{item.icon}</span><strong>{text(item.en, item.fa)}</strong></Link>)}</nav></main>; }

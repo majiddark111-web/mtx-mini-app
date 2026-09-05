@@ -99,6 +99,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .settings-card, .settings-note { background: #151515; border: 1px solid #302c1b; border-radius: 18px; margin-bottom: 14px; padding: 16px; }
 .settings-card h2 { font-size: 1rem; margin: 0 0 14px; }
 .theme-options { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); }
+.language-options { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); }
+.language-options button { background: #202020; border: 1px solid #3a3a3a; border-radius: 14px; color: #aaa; cursor: pointer; font-weight: 700; padding: 12px; }
+.language-options button.active { background: #ffd21e; border-color: #ffe36d; color: #111; }
 .theme-options button { background: #202020; border: 1px solid #3a3a3a; border-radius: 14px; color: #aaa; cursor: pointer; padding: 11px 5px; text-transform: capitalize; }
 .theme-options button span { display: block; font-size: 1.35rem; margin-bottom: 4px; }
 .theme-options button.active { background: #ffd21e; border-color: #ffe36d; color: #111; font-weight: 800; }
@@ -114,6 +117,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .settings-row input:checked + i::after { background: #fff; transform: translateX(20px); }
 .settings-row input:focus-visible + i { outline: 3px solid #fff; outline-offset: 3px; }
 .settings-note p { color: #888; font-size: .78rem; line-height: 1.55; margin-bottom: 0; }
+[dir="rtl"] body { font-family: Tahoma, Arial, sans-serif; }
+[dir="rtl"] .activity-item aside { align-items: flex-start; text-align: left; }
 @media (prefers-color-scheme: light) {
   :root[data-app-theme="system"] { color: #171717; background: #f4f1e7; }
   :root[data-app-theme="system"] body { background: radial-gradient(900px 600px at 50% -10%, #fff1a8 0%, #f7f5ee 55%, #efede6 100%); }
