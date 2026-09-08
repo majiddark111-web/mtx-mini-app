@@ -22,6 +22,9 @@ pnpm db:migrate
 | `TELEGRAM_BOT_TOKEN` | yes | BotFather token; server only |
 | `JWT_SECRET` | yes | Random player JWT/request derivation secret, ≥32 characters |
 | `ADMIN_JWT_SECRET` | yes for admin | Separate random admin JWT secret, ≥32 characters |
+| `ADMIN_USERNAME` | Node admin | Operator login name; at least 3 characters |
+| `ADMIN_PASSWORD_HASH` | Node admin | Full `scrypt:salt:hash` output from `hashAdminPassword`; never the plaintext password |
+| `ADMIN_TOTP_SECRET` | Node admin | Base32 authenticator seed; at least 128 bits; server-only |
 | `APP_ORIGIN` | yes | Exact HTTPS frontend origin |
 | `AUTH_MAX_AGE_SECONDS` | yes | Telegram initData freshness; recommended `300` |
 | `DATABASE_URL` | Node production | PostgreSQL connection URL; server-only |
@@ -39,6 +42,12 @@ pnpm db:migrate
 | `ADMIN_AUTH` | admin | Separate username/password/OTP or identity-provider adapter |
 
 Generate secrets with a cryptographic secret manager. Never prefix a secret with `VITE_`.
+
+Configure all three Node admin credentials together. Admin login allows five attempts per account per 60-second window, shared through Redis, in addition to the API IP limit. Failed passwords count toward this limit. TOTP accepts 30 seconds of clock skew; after a successful login its counter and all older counters are rejected. Wait for a new authenticator code before logging in again. Password verification runs asynchronously.
+
+The consumed TOTP counter is stored atomically in Redis and survives API restarts while Redis data is retained. Keep Redis persistence enabled and protect `mtx:admin:*` keys from deletion or eviction: losing those keys loses replay history. Redis failure rejects login without issuing a token. Rotate any credentials previously shared in chat, and rotate `ADMIN_JWT_SECRET` to invalidate existing admin sessions.
+
+Staging verification after deploying: open `/admin/login`, sign in with a fresh code, then retry that same code in a private window before it changes; the second login must fail. A later unused code must work. Automated tests cover this HTTP behavior with a shared storage double; repeat it on staging to verify the real Redis connection and Lua execution.
 
 ## 3. Build the frontend
 

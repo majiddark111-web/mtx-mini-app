@@ -32,7 +32,7 @@ const environment = {
   TELEGRAM_BOT_TOKEN: telegramBotToken,
   JWT_SECRET: required('JWT_SECRET'),
   ADMIN_JWT_SECRET: process.env.ADMIN_JWT_SECRET,
-  ADMIN_AUTH: adminValues.every(Boolean) ? createAdminAuth({ username: adminValues[0], passwordHash: adminValues[1], totpSecret: adminValues[2] }) : undefined,
+  ADMIN_AUTH: adminValues.every(Boolean) ? createAdminAuth({ username: adminValues[0], passwordHash: adminValues[1], totpSecret: adminValues[2], redis: infrastructure.redis }) : undefined,
   APP_ORIGIN: appOrigin,
   AUTH_MAX_AGE_SECONDS: process.env.AUTH_MAX_AGE_SECONDS?.trim() ?? '300',
   AUTH_LOG: (message) => process.stderr.write(`Telegram authentication rejected: ${message}\n`),
