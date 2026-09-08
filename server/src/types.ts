@@ -17,6 +17,7 @@ export interface Env {
   LEADERBOARD_PUBSUB?: LeaderboardPubSub;
   LEADERBOARD_WEBSOCKET?: { upgrade(request: Request, gateway: LeaderboardGateway): Promise<Response> };
   ADMIN_JWT_SECRET?: string;
+  ADMIN_AUTH_LOG?: (reason: string) => void;
   ADMIN_AUTH?: { verify(input: { username: string; password: string; otp: string }): Promise<{ id: string } | null> };
 }
 

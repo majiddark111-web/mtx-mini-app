@@ -23,27 +23,34 @@ local attempts = redis.call('INCR', KEYS[1])
 if attempts == 1 then redis.call('EXPIRE', KEYS[1], 60) end
 return attempts`;
 
-export function createAdminAuth({ username, passwordHash, totpSecret, redis, now = () => Date.now() }) {
+export function createAdminAuth({ username, passwordHash, totpSecret, redis, now = () => Date.now(), log = () => {} }) {
   if (!username || username.length < 3) throw new Error('ADMIN_USERNAME is invalid');
   const secretBytes = decodeBase32(totpSecret);
   if (!passwordPattern.test(passwordHash ?? '')) throw new Error('ADMIN_PASSWORD_HASH is invalid');
   if (typeof redis?.command !== 'function') throw new Error('Admin authentication requires shared Redis');
   const accountKey = createHash('sha256').update(username).digest('hex');
   const credentialKey = createHash('sha256').update(username).update('\0').update(secretBytes).digest('hex');
+  const reject = (reason) => { log(reason); return null; };
+  const redisCommand = async (parts, failureReason) => {
+    try { return await redis.command(parts); }
+    catch { log(failureReason); throw new Error('ADMIN_AUTH_STORAGE_UNAVAILABLE'); }
+  };
   return {
     async verify(input) {
-      if (typeof input?.username !== 'string' || typeof input.password !== 'string' || !/^\d{6}$/.test(input.otp ?? '') || input.password.length > 1024) return null;
-      if (!same(input.username, username)) return null;
-      const attempts = await redis.command(['EVAL', attemptScript, '1', `mtx:admin:attempts:${accountKey}`]);
-      if (Number(attempts) > 5) return null;
-      if (!await verifyPassword(input.password, passwordHash)) return null;
+      if (typeof input?.username !== 'string' || typeof input.password !== 'string' || !/^\d{6}$/.test(input.otp ?? '') || input.password.length > 1024) return reject('INVALID_INPUT');
+      if (!same(input.username, username)) return reject('USERNAME_MISMATCH');
+      const attempts = await redisCommand(['EVAL', attemptScript, '1', `mtx:admin:attempts:${accountKey}`], 'REDIS_RATE_LIMIT_FAILED');
+      if (Number(attempts) > 5) { log('RATE_LIMITED'); throw new Error('ADMIN_LOGIN_RATE_LIMITED'); }
+      if (!await verifyPassword(input.password, passwordHash)) return reject('PASSWORD_MISMATCH');
       const moment = now();
       // Check newest first if two adjacent counters happen to share six digits.
       const offset = [30_000, 0, -30_000].find((delta) => same(input.otp, totpAt(totpSecret, moment + delta)));
-      if (offset === undefined) return null;
+      if (offset === undefined) return reject('OTP_INVALID_OR_EXPIRED');
       const counter = Math.floor((moment + offset) / 30_000);
-      const accepted = await redis.command(['EVAL', consumeCounterScript, '1', `mtx:admin:totp:${credentialKey}`, String(counter)]);
-      return Number(accepted) === 1 ? { id: username } : null;
+      const accepted = await redisCommand(['EVAL', consumeCounterScript, '1', `mtx:admin:totp:${credentialKey}`, String(counter)], 'REDIS_REPLAY_CHECK_FAILED');
+      if (Number(accepted) !== 1) return reject('OTP_ALREADY_USED');
+      log('VERIFIED');
+      return { id: username };
     },
   };
 }

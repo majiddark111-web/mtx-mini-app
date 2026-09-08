@@ -49,6 +49,23 @@ The consumed TOTP counter is stored atomically in Redis and survives API restart
 
 Staging verification after deploying: open `/admin/login`, sign in with a fresh code, then retry that same code in a private window before it changes; the second login must fail. A later unused code must work. Automated tests cover this HTTP behavior with a shared storage double; repeat it on staging to verify the real Redis connection and Lua execution.
 
+If login fails, the frontend now distinguishes network errors, rejected input (400), credentials/OTP rejection (401), origin rejection (403), missing endpoint (404), rate limits (429) and unavailable authentication (503). In backend Render logs, search for `MTX admin auth:` at the time of the attempt. These private diagnostic lines contain fixed reason codes, never usernames, passwords, seeds, OTPs or raw infrastructure errors:
+
+| Reason | Action |
+|---|---|
+| `USERNAME_MISMATCH` | Compare the login name with backend `ADMIN_USERNAME` |
+| `PASSWORD_MISMATCH` | Use the password corresponding to `ADMIN_PASSWORD_HASH`, not the hash itself |
+| `OTP_INVALID_OR_EXPIRED` | Check automatic phone time and that the authenticator entry uses the configured seed |
+| `OTP_ALREADY_USED` | Wait for a new unused authenticator code |
+| `RATE_LIMITED` | Stop retrying for 60 seconds |
+| `REDIS_RATE_LIMIT_FAILED` / `REDIS_REPLAY_CHECK_FAILED` | Check Redis availability and permission to run EVAL, GET, SET, INCR and EXPIRE |
+| `AUTH_NOT_CONFIGURED` / `JWT_NOT_CONFIGURED` | Check the admin environment values on the backend service |
+| `INVALID_INPUT` | Check field lengths and the six-digit OTP |
+| `LOGIN_INTERNAL_ERROR` | Investigate server-side authentication/token issuance; no raw error is exposed |
+| `VERIFIED` / `LOGIN_SUCCEEDED` | Credentials were verified / an admin token was issued |
+
+Deploy both frontend and backend for these diagnostics. Never paste credentials or complete environment screenshots into chat.
+
 ## 3. Build the frontend
 
 Set build-time public values:

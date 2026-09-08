@@ -71,8 +71,24 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
   const url = new URL(request.url);
   try {
     if (url.pathname === '/api/admin/auth' && request.method === 'POST') {
-      if (!env.ADMIN_AUTH || !env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) return json({ error: 'Admin authentication unavailable' }, 503, cors);
-      const body = adminLoginSchema.parse(await request.json()); const admin = await env.ADMIN_AUTH.verify(body); if (!admin) return json({ error: 'Unauthorized' }, 401, cors); return json({ token: await issueAdminJwt(admin.id, env.ADMIN_JWT_SECRET), admin: { id: admin.id } }, 200, cors);
+      if (!env.ADMIN_AUTH || !env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) {
+        env.ADMIN_AUTH_LOG?.(!env.ADMIN_AUTH ? 'AUTH_NOT_CONFIGURED' : 'JWT_NOT_CONFIGURED');
+        return json({ error: 'Admin authentication unavailable' }, 503, cors);
+      }
+      try {
+        const body = adminLoginSchema.parse(await request.json());
+        const admin = await env.ADMIN_AUTH.verify(body);
+        if (!admin) return json({ error: 'Unauthorized' }, 401, cors);
+        const token = await issueAdminJwt(admin.id, env.ADMIN_JWT_SECRET);
+        env.ADMIN_AUTH_LOG?.('LOGIN_SUCCEEDED');
+        return json({ token, admin: { id: admin.id } }, 200, cors);
+      } catch (error) {
+        if (error instanceof ValidationError || error instanceof SyntaxError) { env.ADMIN_AUTH_LOG?.('INVALID_INPUT'); throw error; }
+        if (error instanceof Error && error.message === 'ADMIN_LOGIN_RATE_LIMITED') return json({ error: 'Too many login attempts' }, 429, { ...cors, 'retry-after': '60' });
+        if (error instanceof Error && error.message === 'ADMIN_AUTH_STORAGE_UNAVAILABLE') return json({ error: 'Admin authentication unavailable' }, 503, cors);
+        env.ADMIN_AUTH_LOG?.('LOGIN_INTERNAL_ERROR');
+        return json({ error: 'Internal server error' }, 500, cors);
+      }
     }
     if (url.pathname.startsWith('/api/admin/')) {
       if (!env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.length < 32) return json({ error: 'Admin authentication unavailable' }, 503, cors);

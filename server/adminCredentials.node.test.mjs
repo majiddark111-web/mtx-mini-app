@@ -72,12 +72,12 @@ test('limits account attempts across instances, including failed passwords', asy
   const redis = testRedis();
   const auth = createAdminAuth({ ...options, redis });
   for (let attempt = 0; attempt < 5; attempt++) assert.equal(await auth.verify({ ...login(), password: 'wrong' }), null);
-  assert.equal(await createAdminAuth({ ...options, redis }).verify(login()), null);
+  await assert.rejects(createAdminAuth({ ...options, redis }).verify(login()), /ADMIN_LOGIN_RATE_LIMITED/);
 });
 
 test('fails closed if shared replay storage is unavailable', async () => {
   const redis = { async command(parts) { if (parts.length === 5) return 1; throw new Error('Redis unavailable'); } };
-  await assert.rejects(createAdminAuth({ ...options, redis }).verify(login()), /Redis unavailable/);
+  await assert.rejects(createAdminAuth({ ...options, redis }).verify(login()), /ADMIN_AUTH_STORAGE_UNAVAILABLE/);
 });
 
 test('rejects missing storage, malformed password hashes and invalid Base32 characters', () => {
@@ -108,4 +108,43 @@ test('admin HTTP login issues a token once and rejects the replay without a toke
   const replayed = await handleRequest(request(), env);
   assert.equal(replayed.status, 401);
   assert.equal((await replayed.json()).token, undefined);
+});
+
+test('private diagnostics distinguish rejected credentials without logging input values', async () => {
+  const reasons = [];
+  const auth = createAdminAuth({ ...options, redis: testRedis(), log: (reason) => reasons.push(reason) });
+  await auth.verify({ ...login(), username: 'different-user' });
+  await auth.verify({ ...login(), password: 'wrong-secret-password' });
+  await auth.verify(login(moment - 120_000));
+  await auth.verify(login());
+  await auth.verify(login());
+  assert.deepEqual(reasons, ['USERNAME_MISMATCH', 'PASSWORD_MISMATCH', 'OTP_INVALID_OR_EXPIRED', 'VERIFIED', 'OTP_ALREADY_USED']);
+});
+
+test('admin HTTP distinguishes unavailable configuration, storage failure and rate limiting', async () => {
+  const reasons = [];
+  const env = {
+    TELEGRAM_BOT_TOKEN: 'test-only-bot-token', JWT_SECRET: 'p'.repeat(32),
+    ADMIN_JWT_SECRET: 'a'.repeat(32), APP_ORIGIN: 'https://test.mtx.example',
+    ADMIN_AUTH_LOG: (reason) => reasons.push(reason),
+  };
+  const request = () => new Request('https://api.mtx.example/api/admin/auth', {
+    method: 'POST', headers: { 'content-type': 'application/json', origin: env.APP_ORIGIN }, body: JSON.stringify(login()),
+  });
+  const unavailable = await handleRequest(request(), env);
+  assert.equal(unavailable.status, 503);
+  assert.deepEqual(reasons, ['AUTH_NOT_CONFIGURED']);
+  const sensitiveError = 'redis://private:password@example.invalid';
+  const auth = createAdminAuth({ ...options, redis: { async command() { throw new Error(sensitiveError); } }, log: env.ADMIN_AUTH_LOG });
+  const storageFailure = await handleRequest(request(), { ...env, ADMIN_AUTH: auth });
+  assert.equal(storageFailure.status, 503);
+  assert.deepEqual(await storageFailure.json(), { error: 'Admin authentication unavailable' });
+  assert.equal(reasons.at(-1), 'REDIS_RATE_LIMIT_FAILED');
+  assert.ok(!JSON.stringify(reasons).includes(sensitiveError));
+  const limitedAuth = createAdminAuth({ ...options, redis: testRedis(), log: env.ADMIN_AUTH_LOG });
+  for (let attempt = 0; attempt < 5; attempt++) await limitedAuth.verify({ ...login(), password: 'wrong' });
+  const limited = await handleRequest(request(), { ...env, ADMIN_AUTH: limitedAuth });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get('retry-after'), '60');
+  assert.equal((await limited.json()).token, undefined);
 });
