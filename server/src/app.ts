@@ -147,10 +147,11 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!player) return json({ error: 'Unauthorized' }, 401, cors);
       const userId = player.sub;
       if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
-      const current = await gameStorage.stateFor(userId, Date.now());
-      const result = applyOfflineProfit(current, Date.now(), await loadEconomyConfig(env));
+      const now = Date.now();
+      const current = await gameStorage.stateFor(userId, now);
+      const result = applyOfflineProfit(current, now, await loadEconomyConfig(env));
       gameStorage.saveHot(result.state);
-      await socialStorage.recordScore(userId, playerName(player), result.state.coins);
+      await socialStorage.recordScore(userId, playerName(player), result.state.coins, now, result.state.activity);
       return json({ state: result.state, offlineProfit: result.offlineProfit }, 200, cors);
     }
     if (url.pathname === '/api/economy/config' && request.method === 'GET') {
@@ -172,7 +173,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       gameStorage.saveHot(result.state);
       await gameStorage.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
       if (result.flagged) { await antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
-      await socialStorage.recordScore(userId, playerName(player), result.state.coins);
+      await socialStorage.recordScore(userId, playerName(player), result.state.coins, now, result.state.activity);
       return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: false }, 200, cors);
     }
     if (url.pathname === '/api/store/catalog' && request.method === 'GET') {
@@ -294,7 +295,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors); const body = referralAcceptSchema.parse(await request.json()); await socialStorage.acceptReferral(userId, body.code, body.deviceHash, gameStorage, Date.now()); return json({ accepted: true }, 200, cors);
     }
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
-      const player = await authenticatedPlayer(request, env); if (!player) return json({ error: 'Unauthorized' }, 401, cors); const scope = url.searchParams.get('scope') ?? 'global'; if (!['global', 'friends', 'weekly', 'monthly', 'season'].includes(scope)) return json({ error: 'Invalid leaderboard scope' }, 400, cors); const now = Date.now(); const state = await gameStorage.stateFor(player.sub, now); await socialStorage.recordScore(player.sub, playerName(player), state.coins, now); return json({ entries: await socialStorage.leaders(scope as 'global' | 'friends' | 'weekly' | 'monthly' | 'season', player.sub, 100, now) }, 200, cors);
+      const player = await authenticatedPlayer(request, env); if (!player) return json({ error: 'Unauthorized' }, 401, cors); const scope = url.searchParams.get('scope') ?? 'global'; if (!['global', 'friends', 'weekly', 'monthly', 'season'].includes(scope)) return json({ error: 'Invalid leaderboard scope' }, 400, cors); const now = Date.now(); const state = await gameStorage.stateFor(player.sub, now); await socialStorage.recordScore(player.sub, playerName(player), state.coins, now, state.activity); return json({ entries: await socialStorage.leaders(scope as 'global' | 'friends' | 'weekly' | 'monthly' | 'season', player.sub, 100, now) }, 200, cors);
     }
     if (url.pathname === '/api/profile' && request.method === 'GET') {
       const userId = await authenticatedUserId(request, env); if (!userId) return json({ error: 'Unauthorized' }, 401, cors);

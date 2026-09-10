@@ -1,6 +1,7 @@
 import type { ServerGameState } from './gameEngine.ts';
 import { GameStorage, type BatchDeduplicator, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
 import { leaderboardPeriodKey, type LeaderboardEntry, type LeaderboardRepository, type LeaderboardScope } from './social.ts';
+import { activityFor, activityPeriodEnd, type ActivityTotals } from './periodActivity.ts';
 
 export interface RedisCommands { command<T>(parts: string[]): Promise<T>; }
 export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; transaction?<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T>; }
@@ -56,13 +57,29 @@ export function productionGameStorage(redis: RedisCommands, database: PostgresQu
 }
 
 export class RedisLeaderboardRepository implements LeaderboardRepository {
-  constructor(privateRedis: RedisCommands) { this.redis = privateRedis; }
+  constructor(privateRedis: RedisCommands, prefix = 'mtx:leaderboard') { this.redis = privateRedis; this.prefix = prefix; }
   private readonly redis: RedisCommands;
-  private key(scope: LeaderboardScope, now: number): string { return scope === 'global' ? 'mtx:leaderboard:global' : `mtx:leaderboard:${scope}:${leaderboardPeriodKey(scope, now)}`; }
-  async record(userId: string, username: string, coins: number, now = Date.now()): Promise<void> { for (const scope of ['global', 'weekly', 'monthly', 'season'] as const) await this.redis.command(['ZADD', this.key(scope, now), String(coins), userId]); await this.redis.command(['HSET', 'mtx:leaderboard:names', userId, username]); }
+  private readonly prefix: string;
+  private key(scope: LeaderboardScope, now: number): string { return scope === 'global' ? `${this.prefix}:global` : `${this.prefix}:v2:${scope}:${leaderboardPeriodKey(scope, now)}`; }
+  async record(userId: string, username: string, coins: number, now = Date.now(), activity?: ActivityTotals): Promise<void> {
+    await this.redis.command(['ZADD', this.key('global', now), String(coins), userId]);
+    for (const scope of ['weekly', 'monthly', 'season'] as const) {
+      const earned = activityFor({ activity }, scope, now).earnedCoins;
+      if (earned <= 0) continue;
+      const key = this.key(scope, now);
+      // A cumulative snapshot is idempotent; GT prevents an older request from
+      // reducing this period's score. Keep closed boards for thirty days.
+      await this.redis.command(['ZADD', key, 'GT', String(earned), userId]);
+      await this.redis.command(['EXPIREAT', key, String(Math.floor(activityPeriodEnd(scope, now) / 1000) + 30 * 86_400)]);
+    }
+    await this.redis.command([username === userId ? 'HSETNX' : 'HSET', `${this.prefix}:names`, userId, username]);
+  }
   async leaders(limit: number, scope: LeaderboardScope = 'global', now = Date.now()): Promise<LeaderboardEntry[]> {
-    const values = await this.redis.command<string[]>(['ZREVRANGE', this.key(scope, now), '0', String(Math.max(0, limit - 1)), 'WITHSCORES']); const entries: LeaderboardEntry[] = [];
-    for (let index = 0; index < values.length; index += 2) { const userId = values[index]; const username = await this.redis.command<string | null>(['HGET', 'mtx:leaderboard:names', userId]); entries.push({ userId, username: username ?? userId, coins: Number(values[index + 1]), rank: index / 2 + 1 }); }
-    return entries;
+    if (limit <= 0) return [];
+    const values = await this.redis.command<string[]>(['ZREVRANGE', this.key(scope, now), '0', String(limit - 1), 'WITHSCORES']);
+    const ids = values.filter((_, index) => index % 2 === 0);
+    if (ids.length === 0) return [];
+    const names = await this.redis.command<(string | null)[]>(['HMGET', `${this.prefix}:names`, ...ids]);
+    return ids.map((userId, index) => ({ userId, username: names[index] ?? userId, coins: Number(values[index * 2 + 1]), rank: index + 1 }));
   }
 }

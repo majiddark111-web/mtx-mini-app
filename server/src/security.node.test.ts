@@ -108,6 +108,15 @@ describe('Telegram authentication security', () => {
     const payload = await response.json() as { entries: Array<{ username: string; coins: number }> };
     assert.equal(payload.entries[0].username, 'tester');
     assert.equal(payload.entries[0].coins, 2);
+    const current = await gameStorage.stateFor('42', Date.now());
+    gameStorage.saveHot({ ...current, coins: current.coins + 10_000, version: current.version + 1 });
+    for (const scope of ['weekly', 'monthly', 'season']) {
+      const request = await signedRequest(`https://api.mtx.test/api/leaderboard?scope=${scope}`, token, sessionKey);
+      const result = await handleRequestWithStorage(request, env, gameStorage, undefined, socialStorage);
+      assert.equal(result.status, 200);
+      const period = await result.json() as { entries: Array<{ coins: number }> };
+      assert.equal(period.entries[0].coins, 2, 'Period rankings must exclude unrelated balance changes');
+    }
   });
 
   it('does not charge twice when a coin purchase is replayed', async () => {

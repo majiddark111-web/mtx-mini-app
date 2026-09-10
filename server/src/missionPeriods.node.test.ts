@@ -4,6 +4,9 @@ import { applyOfflineProfit, applyTapBatch, createGameState } from './gameEngine
 import { GameStorage, MemoryGameRepository } from './gameStorage.ts';
 import { SocialStorage } from './social.ts';
 import { CommerceStorage } from './commerce.ts';
+import { PostgresGameRepository, type PostgresQueries } from './productionStorage.ts';
+import { PostgresSocialPersistence } from './socialPersistence.ts';
+import type { ServerGameState } from './gameEngine.ts';
 
 const now = Date.UTC(2026, 8, 13, 23, 59, 59);
 const taps = (count: number, at = now) => applyTapBatch(createGameState('period-user', at), { taps: count, durationMs: count * 100, batchId: 'period-test' }, at).state;
@@ -72,4 +75,44 @@ test('a completed daily mission cannot be claimed twice or again tomorrow withou
   assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
   assert.equal((await game.stateFor('period-user', now)).coins, 800);
   await assert.rejects(social.claimMission('period-user', 'daily-taps', game, now + 1000), /MISSION_UNAVAILABLE/);
+});
+
+test('PostgreSQL adapters reload progress and preserve a mission claim after restart', async () => {
+  // Database double exercises the real repository and social adapters without
+  // connecting to a deployed database. This checks restart behavior, not DB concurrency.
+  let persisted: ServerGameState | undefined;
+  const claims = new Set<string>();
+  const database: PostgresQueries = {
+    async query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }> {
+      if (sql.startsWith('SELECT state')) return { rows: (persisted ? [{ state: structuredClone(persisted) }] : []) as T[] };
+      if (sql.startsWith('INSERT INTO mtx_game_state')) {
+        persisted = JSON.parse(String(values[1])) as ServerGameState;
+        return { rows: [{ user_id: values[0] }] as T[] };
+      }
+      const key = values.slice(0, 3).join(':');
+      if (sql.startsWith('SELECT EXISTS')) return { rows: [{ exists: claims.has(key) }] as T[] };
+      if (sql.startsWith('INSERT INTO mtx_mission_claims')) {
+        if (claims.has(key)) return { rows: [] };
+        claims.add(key);
+        return { rows: [{ user_id: values[0] }] as T[] };
+      }
+      throw new Error('Unexpected mission test query');
+    },
+    async transaction<T>(operation: (connection: PostgresQueries) => Promise<T>): Promise<T> { return operation(database); },
+  };
+  const repository = new PostgresGameRepository(database);
+  const game = new GameStorage(repository);
+  game.saveHot(taps(500)); await game.flushDirty();
+  const social = new SocialStorage(undefined, new PostgresSocialPersistence(database));
+  assert.equal((await social.claimMission('period-user', 'daily-taps', game, now)).reward, 300);
+  const restartedGame = new GameStorage(new PostgresGameRepository(database));
+  const restartedSocial = new SocialStorage(undefined, new PostgresSocialPersistence(database));
+  const state = await restartedGame.stateFor('period-user', now);
+  const mission = (await restartedSocial.missions('period-user', state, now))[0];
+  assert.equal(mission.progress, 500);
+  assert.equal(mission.claimed, true);
+  assert.equal(state.coins, 800);
+  await assert.rejects(restartedSocial.claimMission('period-user', 'daily-taps', restartedGame, now), /MISSION_UNAVAILABLE/);
+  assert.equal((await restartedSocial.missions('period-user', state, now + 1000))[0].progress, 0);
+  assert.equal((await repository.get('period-user'))?.coins, 800);
 });

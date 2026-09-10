@@ -8,7 +8,13 @@
 - Spending does not subtract from earned-income progress. Purchased coins, daily rewards, mission rewards, challenges and referral rewards do not count as gameplay income.
 - Offline income is counted when credited by the server, within its existing cap. It is not retroactively distributed over the absence interval.
 
-## Persistence and rollout
+## Leaderboards
+
+Global and friends rankings retain their existing current-balance meaning. Weekly, monthly and season rankings use cumulative verified gameplay income for that UTC period, using the same counters as missions. A season is a calendar quarter. Spending, wallet purchases and social rewards do not increase or reduce period scores. Offline income belongs to the period in which it is credited.
+
+Repeated requests publish the cumulative counter rather than incrementing a score. Redis `ZADD GT` prevents an older snapshot from lowering a period score. Period boards use `mtx:leaderboard:v2:<scope>:<period>` keys so old balance-based rankings cannot contaminate new scores. They expire thirty days after the period ends. Global keys and existing balances are preserved; old period keys are not deleted by this rollout. Display names are fetched in one HMGET rather than one request per player.
+
+## Persistence and rollout details
 
 The optional `activity` field in the existing game-state JSON stores the current day, week, month and calendar quarter counters. The engine updates these in the same state as coins and XP; the existing PostgreSQL state persistence saves them together. No SQL schema migration is required.
 

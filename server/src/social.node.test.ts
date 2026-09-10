@@ -59,14 +59,15 @@ describe('phase 6 social systems', () => {
     await social.recordScore('1', 'player-1', 100, weekOne); await social.recordScore('2', 'player-2', 200, weekOne); await social.recordScore('3', 'player-3', 300, weekOne);
     await social.acceptReferral('2', 'MTX-1', 'f'.repeat(64), game, weekOne);
     assert.deepEqual((await social.leaders('friends', '1', 100, weekOne)).map((entry) => entry.userId), ['2', '1']);
-    await social.recordScore('1', 'player-1', 400, weekTwo);
+    const active = applyTapBatch(await game.stateFor('1', weekTwo), { taps: 10, durationMs: 1000, batchId: 'week-two' }, weekTwo).state;
+    await social.recordScore('1', 'player-1', active.coins, weekTwo, active.activity);
     assert.deepEqual((await social.leaders('weekly', '1', 100, weekTwo)).map((entry) => entry.userId), ['1']);
   });
 
   it('uses Redis sorted-set commands for production rankings', async () => {
-    class FakeRedis implements RedisCommands { commands: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.commands.push(parts); if (parts[0] === 'ZREVRANGE') return ['2', '900', '1', '500'] as T; if (parts[0] === 'HGET') return `player-${parts[2]}` as T; return 1 as T; } }
+    class FakeRedis implements RedisCommands { commands: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.commands.push(parts); if (parts[0] === 'ZREVRANGE') return ['2', '900', '1', '500'] as T; if (parts[0] === 'HMGET') return parts.slice(2).map((id) => `player-${id}`) as T; return 1 as T; } }
     const redis = new FakeRedis(); const repository = new RedisLeaderboardRepository(redis); await repository.record('1', 'player-1', 500); const leaders = await repository.leaders(2);
-    assert.equal(leaders[0].coins, 900); assert.equal(leaders[0].rank, 1); assert.deepEqual(redis.commands.map((parts) => parts[0]), ['ZADD', 'ZADD', 'ZADD', 'ZADD', 'HSET', 'ZREVRANGE', 'HGET', 'HGET']);
+    assert.equal(leaders[0].coins, 900); assert.equal(leaders[0].rank, 1); assert.equal(leaders[0].username, 'player-2'); assert.deepEqual(redis.commands.map((parts) => parts[0]), ['ZADD', 'HSET', 'ZREVRANGE', 'HMGET']);
   });
 
   it('validates combo and cipher on the server and prevents repeat claims', async () => {

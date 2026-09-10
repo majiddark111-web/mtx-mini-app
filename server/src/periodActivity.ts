@@ -18,6 +18,13 @@ export function activityFor(state: Pick<ServerGameState, 'activity'>, period: Ac
   return saved?.key === key ? { ...saved } : { key, taps: 0, earnedCoins: 0, levelsGained: 0 };
 }
 
+export function activityPeriodEnd(period: ActivityPeriod, now: number): number {
+  const date = new Date(now);
+  if (period === 'monthly') return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+  if (period === 'season') return Date.UTC(date.getUTCFullYear(), (Math.floor(date.getUTCMonth() / 3) + 1) * 3, 1);
+  return Date.parse(activityPeriodKey(period, now)) + (period === 'weekly' ? 7 : 1) * 86_400_000;
+}
+
 // Only verified gameplay calls this function. Wallet credits and social rewards
 // preserve these counters, but do not increase them. Stored with the game state.
 export function recordGameplayActivity(state: ServerGameState, now: number, income: number, taps = 0, levelsGained = 0): ServerGameState {

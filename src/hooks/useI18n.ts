@@ -22,6 +22,8 @@ Object.assign(ar, { 'Choose three cards in the correct order.': 'اختر ثلا
 Object.assign(ar, { Achievements: 'الإنجازات', 'Badges earned through real game progress': 'شارات تُكتسب عبر التقدم الحقيقي في اللعبة', 'Achievements could not load.': 'تعذّر تحميل الإنجازات.', 'Loading achievements…': 'جارٍ تحميل الإنجازات…', Unlocked: 'تم فتحها' });
 Object.assign(ar, { Global: 'العالمي', Friends: 'الأصدقاء', Weekly: 'الأسبوعي', Monthly: 'الشهري', Season: 'الموسم', 'Leaderboard period': 'فترة لوحة المتصدرين', 'Loading leaderboard…': 'جارٍ تحميل لوحة المتصدرين…', 'Invite friends to see them here.': 'ادعُ أصدقاءك ليظهروا هنا.', 'No ranking data for this period yet.': 'لا توجد بيانات ترتيب لهذه الفترة بعد.', You: 'أنت' });
 
+Object.assign(ar, { 'Ranked by current MTX balance': 'الترتيب حسب رصيد MTX الحالي', 'Ranked by gameplay earnings in this UTC period; purchases and rewards excluded.': 'الترتيب حسب أرباح اللعب خلال هذه الفترة بتوقيت UTC؛ دون المشتريات والمكافآت.' });
+
 export function useI18n() {
   const { language } = usePreferences();
   const fa = language === 'fa'; const arabic = language === 'ar';
