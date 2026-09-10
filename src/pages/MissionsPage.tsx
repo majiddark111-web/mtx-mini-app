@@ -5,9 +5,9 @@ import { claimMission, fetchMissions, type Mission } from '../services/socialSer
 import { useAppStore } from '../store/useAppStore';
 
 const titles: Record<string, { fa: string; ar: string }> = {
-  'daily-taps': { fa: 'انجام ۵۰۰ تپ تأییدشده', ar: 'نفّذ 500 نقرة مؤكدة' },
-  'weekly-coins': { fa: 'کسب ۱۰٬۰۰۰ MTX', ar: 'اربح 10,000 MTX' },
-  'monthly-level': { fa: 'رسیدن به سطح ۱۰', ar: 'بلوغ المستوى 10' },
+  'daily-taps': { fa: 'انجام ۵۰۰ تپ تأییدشده در امروز', ar: 'نفّذ 500 نقرة مؤكدة اليوم' },
+  'weekly-coins': { fa: 'کسب ۱۰٬۰۰۰ MTX از بازی در این هفته', ar: 'اربح 10,000 MTX من اللعب هذا الأسبوع' },
+  'monthly-level': { fa: '۱۰ سطح پیشرفت در این ماه', ar: 'تقدّم 10 مستويات هذا الشهر' },
 };
 
 export function MissionsPage() {

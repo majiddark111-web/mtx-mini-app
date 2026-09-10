@@ -1,6 +1,7 @@
 import type { ServerGameState } from './gameEngine.ts';
 import type { GameStorage } from './gameStorage.ts';
 import type { SocialPersistence } from './socialPersistence.ts';
+import { activityFor } from './periodActivity.ts';
 
 export interface MissionView { id: string; title: string; target: number; progress: number; reward: number; claimed: boolean; period: 'daily' | 'weekly' | 'monthly'; }
 export interface LeaderboardEntry { userId: string; username: string; coins: number; rank: number; }
@@ -43,9 +44,9 @@ export class SocialStorage {
 
   async missions(userId: string, state: ServerGameState, now: number): Promise<MissionView[]> {
     const definitions = [
-      { id: 'daily-taps', title: 'Make 500 verified taps', target: 500, progress: state.xp, reward: 300, period: 'daily' as const },
-      { id: 'weekly-coins', title: 'Earn 10,000 MTX', target: 10_000, progress: state.coins, reward: 1_000, period: 'weekly' as const },
-      { id: 'monthly-level', title: 'Reach level 10', target: 10, progress: state.level, reward: 2_000, period: 'monthly' as const },
+      { id: 'daily-taps', title: 'Make 500 verified taps today', target: 500, progress: activityFor(state, 'daily', now).taps, reward: 300, period: 'daily' as const },
+      { id: 'weekly-coins', title: 'Earn 10,000 MTX from gameplay this week', target: 10_000, progress: activityFor(state, 'weekly', now).earnedCoins, reward: 1_000, period: 'weekly' as const },
+      { id: 'monthly-level', title: 'Gain 10 levels this month', target: 10, progress: activityFor(state, 'monthly', now).levelsGained, reward: 2_000, period: 'monthly' as const },
     ];
     return Promise.all(definitions.map(async (mission) => { const periodKey = missionPeriodKey(now, mission.period); return { ...mission, progress: Math.min(mission.target, mission.progress), claimed: this.persistence ? await this.persistence.missionClaimed(userId, mission.id, periodKey) : this.missionClaims.has(`${userId}:${mission.id}:${periodKey}`) }; }));
   }
@@ -55,7 +56,7 @@ export class SocialStorage {
     const mission = (await this.missions(userId, state, now)).find((item) => item.id === missionId);
     if (!mission || mission.claimed || mission.progress < mission.target) throw new Error('MISSION_UNAVAILABLE');
     let updated: ServerGameState;
-    if (this.persistence) { const saved = await this.persistence.claimMission(userId, mission.id, missionPeriodKey(now, mission.period), now, state, mission.reward); if (!saved) throw new Error('MISSION_UNAVAILABLE'); updated = saved; } else { this.missionClaims.add(`${userId}:${mission.id}:${missionPeriodKey(now, mission.period)}`); updated = { ...state, coins: state.coins + mission.reward, version: state.version + 1 }; }
+    if (this.persistence) { const saved = await this.persistence.claimMission(userId, mission.id, missionPeriodKey(now, mission.period), now, state, mission.reward); if (!saved) throw new Error('MISSION_UNAVAILABLE'); updated = saved; } else { const key = `${userId}:${mission.id}:${missionPeriodKey(now, mission.period)}`; if (this.missionClaims.has(key)) throw new Error('MISSION_UNAVAILABLE'); this.missionClaims.add(key); updated = { ...state, coins: state.coins + mission.reward, version: state.version + 1 }; }
     game.saveHot(updated, !this.persistence); await this.recordScore(userId, userId, updated.coins);
     return { reward: mission.reward, state: updated };
   }

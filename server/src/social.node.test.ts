@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { GameStorage } from './gameStorage.ts';
 import { SocialStorage } from './social.ts';
 import { RedisLeaderboardRepository, type RedisCommands } from './productionStorage.ts';
+import { applyTapBatch } from './gameEngine.ts';
 
 describe('phase 6 social systems', () => {
   it('allows one daily claim and continues a next-day streak', async () => {
@@ -31,16 +32,20 @@ describe('phase 6 social systems', () => {
   });
 
   it('claims only completed missions once', async () => {
-    const social = new SocialStorage(); const game = new GameStorage(); const state = await game.stateFor('1', Date.now()); game.saveHot({ ...state, xp: 500 });
+    const social = new SocialStorage(); const game = new GameStorage(); const state = await game.stateFor('1', Date.now()); game.saveHot(applyTapBatch(state, { taps: 500, durationMs: 50_000, batchId: 'daily-mission' }, Date.now()).state);
     assert.equal((await social.claimMission('1', 'daily-taps', game, Date.now())).reward, 300);
     await assert.rejects(() => social.claimMission('1', 'daily-taps', game, Date.now()), /MISSION_UNAVAILABLE/);
   });
 
   it('does not reset a weekly mission on the following day', async () => {
-    const social = new SocialStorage(); const game = new GameStorage(); const monday = Date.UTC(2026, 7, 17); const state = await game.stateFor('1', monday); game.saveHot({ ...state, coins: 10_000 });
+    const social = new SocialStorage(); const game = new GameStorage(); const monday = Date.UTC(2026, 7, 17); const state = await game.stateFor('1', monday); game.saveHot(applyTapBatch({ ...state, profitPerTap: 1000 }, { taps: 10, durationMs: 1000, batchId: 'weekly-mission' }, monday).state);
     assert.equal((await social.claimMission('1', 'weekly-coins', game, monday)).reward, 1_000);
     await assert.rejects(() => social.claimMission('1', 'weekly-coins', game, monday + 86_400_000), /MISSION_UNAVAILABLE/);
-    assert.equal((await social.claimMission('1', 'weekly-coins', game, monday + 7 * 86_400_000)).reward, 1_000);
+    const nextWeek = monday + 7 * 86_400_000;
+    await assert.rejects(() => social.claimMission('1', 'weekly-coins', game, nextWeek), /MISSION_UNAVAILABLE/);
+    const current = await game.stateFor('1', nextWeek);
+    game.saveHot(applyTapBatch(current, { taps: 10, durationMs: 1000, batchId: 'next-week-mission' }, nextWeek).state);
+    assert.equal((await social.claimMission('1', 'weekly-coins', game, nextWeek)).reward, 1_000);
   });
 
   it('sorts a simulated 10,000-user leaderboard without database queries', async () => {

@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from './gameConfig.ts';
 import { effectiveProfitPerHour } from '../../economy/economyService.ts';
 import { ECONOMY_CONFIG, type EconomyConfig } from '../../economy/economyConfig.ts';
+import { recordGameplayActivity, type ActivityTotals } from './periodActivity.ts';
 
 export interface ServerGameState {
   userId: string;
@@ -20,6 +21,7 @@ export interface ServerGameState {
   lastTapAt: number;
   flaggedBatches: number;
   version: number;
+  activity?: ActivityTotals;
 }
 
 export interface TapBatch { taps: number; durationMs: number; batchId: string; }
@@ -44,7 +46,8 @@ export function calculateOfflineProfit(profitPerHour: number, elapsedMs: number,
 
 export function applyOfflineProfit(state: ServerGameState, now: number, economy: EconomyConfig = ECONOMY_CONFIG): { state: ServerGameState; offlineProfit: number } {
   const offlineProfit = calculateOfflineProfit(effectiveProfitPerHour(state.profitPerHour, economy), now - state.lastSeenAt, economy);
-  return { state: { ...rechargeEnergy(state, now), coins: state.coins + offlineProfit, lastSeenAt: now, version: state.version + 1 }, offlineProfit };
+  const updated = { ...rechargeEnergy(state, now), coins: state.coins + offlineProfit, lastSeenAt: now, version: state.version + 1 };
+  return { state: recordGameplayActivity(updated, now, offlineProfit), offlineProfit };
 }
 
 export function applyTapBatch(state: ServerGameState, batch: TapBatch, now: number): { state: ServerGameState; acceptedTaps: number; flagged: boolean } {
@@ -56,7 +59,7 @@ export function applyTapBatch(state: ServerGameState, batch: TapBatch, now: numb
   const xp = recharged.xp + acceptedTaps * GAME_CONFIG.xpPerAcceptedTap;
   const level = levelForXp(xp);
   return {
-    state: { ...recharged, coins: recharged.coins + acceptedTaps * recharged.profitPerTap, xp, level, rank: rankForLevel(level), energy: recharged.energy - acceptedTaps, lastTapAt: now, lastSeenAt: now, version: recharged.version + 1 },
+    state: recordGameplayActivity({ ...recharged, coins: recharged.coins + acceptedTaps * recharged.profitPerTap, xp, level, rank: rankForLevel(level), energy: recharged.energy - acceptedTaps, lastTapAt: now, lastSeenAt: now, version: recharged.version + 1 }, now, acceptedTaps * recharged.profitPerTap, acceptedTaps, level - recharged.level),
     acceptedTaps,
     flagged: false,
   };
