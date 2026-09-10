@@ -96,7 +96,9 @@ pnpm db:migrate
 pnpm server:start
 ```
 
-Configure `/healthz` as the health-check path. The runtime persists dirty game state before returning, flushes queued tap events every five seconds and performs a final flush during graceful shutdown. Do not deploy `server/localServer.mjs` as the production runtime.
+Configure `/healthz` as the health-check path. Production commits each tap batch's state, receipt and audit event atomically before acknowledgement; offline credit is transactional too. The five-second queue flush is retained for legacy events, not new tap durability. Do not deploy `server/localServer.mjs` as the production runtime.
+
+The tap reliability release requires additive migration `004_tap_receipts.sql` and deployment of both API and frontend. Existing migration files must not be edited. No new environment variable is required. Follow the [persistence rollout and test checklist](PERSISTENCE_RELIABILITY.md).
 
 The repository root includes `render.yaml` for a free Singapore staging service. Because Render's dedicated `preDeployCommand` is a paid-service feature, the free staging Blueprint runs the idempotent migration at the end of `buildCommand`. Move `pnpm db:migrate` to `preDeployCommand` before upgrading this Blueprint to a paid production service.
 

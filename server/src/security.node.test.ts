@@ -28,6 +28,17 @@ async function signedRequest(url: string, token: string, sessionKey: string, ini
 }
 
 describe('Telegram authentication security', () => {
+  it('keeps both distinct tap batches when they arrive simultaneously', async () => {
+    const login = await handleRequest(authRequest(await signedInitData()), env);
+    const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };
+    const game = new GameStorage();
+    const requests = await Promise.all(['concurrent-batch-0001', 'concurrent-batch-0002'].map((batchId) => signedRequest('https://api.mtx.test/api/game/taps', token, sessionKey, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taps: 2, durationMs: 1000, batchId }),
+    })));
+    const responses = await Promise.all(requests.map((request) => handleRequestWithStorage(request, env, game)));
+    assert.deepEqual(responses.map((response) => response.status), [200, 200]);
+    assert.equal((await game.stateFor('42', Date.now())).coins, 4);
+  });
   it('issues a JWT only for valid Telegram initData', async () => {
     const response = await handleRequest(authRequest(await signedInitData()), env);
     assert.equal(response.status, 200);

@@ -1,5 +1,4 @@
 import { issueJwt, verifyJwt } from './jwt.ts';
-import { applyOfflineProfit, applyTapBatch } from './gameEngine.ts';
 import { GameStorage } from './gameStorage.ts';
 import { RateLimiter, type RequestRateLimiter } from './rateLimiter.ts';
 import { authRequestSchema, emptyBodySchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
@@ -148,9 +147,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const userId = player.sub;
       if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
       const now = Date.now();
-      const current = await gameStorage.stateFor(userId, now);
-      const result = applyOfflineProfit(current, now, await loadEconomyConfig(env));
-      gameStorage.saveHot(result.state);
+      const result = await gameStorage.creditOffline(userId, now, await loadEconomyConfig(env));
       await socialStorage.recordScore(userId, playerName(player), result.state.coins, now, result.state.activity);
       return json({ state: result.state, offlineProfit: result.offlineProfit }, 200, cors);
     }
@@ -167,14 +164,10 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
       const batch = tapBatchSchema.parse(await request.json());
       const now = Date.now();
-      const current = await gameStorage.stateFor(userId, now);
-      const result = applyTapBatch(current, batch, now);
-      if (!await gameStorage.claimBatch(userId, batch.batchId, now)) return json({ state: current, acceptedTaps: 0, duplicate: true }, 200, cors);
-      gameStorage.saveHot(result.state);
-      await gameStorage.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
-      if (result.flagged) { await antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
+      const result = await gameStorage.applyTaps(userId, batch, now);
+      if (result.flagged) { if (!result.duplicate) await antiCheatMonitor.flag(userId, 'implausible_tap_rate', { taps: batch.taps }); return json({ error: 'Implausible tap rate', flagged: true, state: result.state }, 422, cors); }
       await socialStorage.recordScore(userId, playerName(player), result.state.coins, now, result.state.activity);
-      return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: false }, 200, cors);
+      return json({ state: result.state, acceptedTaps: result.acceptedTaps, duplicate: result.duplicate }, 200, cors);
     }
     if (url.pathname === '/api/store/catalog' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));

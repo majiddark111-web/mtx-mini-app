@@ -37,7 +37,7 @@ pnpm test
 pnpm build
 ```
 
-The current baseline is 53 passing tests. The Phase 9 initial bundle budget is less than 100 KiB gzip JavaScript and 5 KiB gzip CSS.
+Use the test runner output for the current test count. The Phase 9 initial bundle budget is less than 100 KiB gzip JavaScript and 5 KiB gzip CSS.
 
 ### Real infrastructure integration
 
@@ -50,7 +50,7 @@ MTX_INTEGRATION_ALLOW_WRITE=true \
 pnpm test:integration
 ```
 
-The runner verifies versioned migrations, PostgreSQL rollback, atomic Redis batch claims, stale game-state rejection and Redis-to-PostgreSQL tap flushing. It refuses to run without the explicit write flag and removes its own UUID-scoped records afterward. Use `pnpm db:migrate` before starting the API and `pnpm server:start` for the persistent Node runtime.
+The runner verifies versioned migrations, PostgreSQL rollback, legacy Redis claims/queue flushing, stale-state rejection, simultaneous tap batches, durable receipt replay, a simulated lost commit response, and concurrent offline credit. It refuses to run without the explicit write flag and removes its own UUID-scoped records afterward. Use only an isolated test database. Use `pnpm db:migrate` before starting the API and `pnpm server:start` for the persistent Node runtime.
 
 ## Architecture
 
@@ -63,9 +63,9 @@ flowchart LR
   API --> GAME[Game/economy services]
   API --> SOCIAL[Mission/referral services]
   API --> PAY[Payment verifier]
-  GAME --> REDIS[(Redis hot path)]
+  GAME -->|atomic batch receipt and state| PG[(PostgreSQL)]
+  GAME --> REDIS[(Redis rankings and security)]
   SOCIAL --> REDIS
-  REDIS -->|periodic flush| PG[(PostgreSQL)]
   API --> PG
   ADMIN[Separate admin client] -->|admin JWT| API
 ```
@@ -76,6 +76,7 @@ Detailed documentation:
 - [API reference](docs/API.md)
 - [Folder guide](docs/FOLDERS.md)
 - [Deployment guide](docs/DEPLOYMENT.md)
+- [Persistence reliability and recovery tests](docs/PERSISTENCE_RELIABILITY.md)
 - [Security boundary](SECURITY.md)
 - [Economy specification](ECONOMY-SPEC.md)
 

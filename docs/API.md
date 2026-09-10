@@ -34,6 +34,8 @@ The browser interceptor creates these automatically. A repeated nonce returns `4
 
 Tap batches above 15 taps/second are rejected and flagged. The client normally synchronizes every 2 seconds or 50 taps. Energy and offline time are derived on the server.
 
+For taps, `200` returns `{ state, acceptedTaps, duplicate }`; `422` with `flagged: true` and `state` is a terminal rejection, not a transport failure. Reconcile with that state and acknowledge the rejected batch without credit. Retry network/5xx failures using the same batch ID, taps and sealed duration, but fresh request-signing nonce/timestamp. Production commits the result and a durable per-user batch receipt together. Replays return current authoritative state without applying the batch again; reusing an ID with a different tap count is rejected. Retain receipts to preserve this guarantee.
+
 ## Commerce and wallet
 
 | Method | Path | Purpose |

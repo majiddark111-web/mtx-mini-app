@@ -22,8 +22,8 @@ sequenceDiagram
   C->>A: Signed request with timestamp and nonce
   A->>R: Reserve nonce atomically
   A->>A: Validate signature and server-owned state
-  A->>R: Queue/hot-state update
-  R-->>P: Periodic write-behind flush
+  A->>P: Lock player row; commit batch receipt, state and event atomically
+  A->>R: Update derived leaderboard
   A-->>C: Authoritative result
 ```
 
@@ -32,7 +32,7 @@ sequenceDiagram
 | Domain | Client | Server | Production persistence |
 |---|---|---|---|
 | Authentication | Telegram SDK and token memory | initData/JWT/request verification | Redis nonce TTL |
-| Game | optimistic display and tap batching | energy, rate, income, offline profit | Redis queue + PostgreSQL state |
+| Game | durable local outbox and optimistic display | energy, rate, income, offline profit | PostgreSQL row-locked state + durable batch receipts |
 | Economy | display | versioned formulas and price checks | economy config binding |
 | Commerce | catalog/inventory UI | idempotent purchase/payment handling | PostgreSQL/provider verifier |
 | Social | mission/daily/referral UI | eligibility, claims, anti-abuse | PostgreSQL + Redis leaderboard |
@@ -40,8 +40,12 @@ sequenceDiagram
 
 ## Failure model
 
-- Redis must be shared by every API instance; otherwise replay and hot-state guarantees become instance-local.
+- Redis must be shared by every API instance for request nonce protection, rate limits, admin OTP protection and rankings.
 - PostgreSQL writes use conflict-safe keys for claims and idempotency.
-- Tap events enter Redis before periodic persistence, avoiding one database write per tap.
+- Each tap **batch**, not each individual tap, commits state, receipt and audit event in one PostgreSQL transaction before acknowledgement. Offline credit uses the same player row lock. Production does not read mutable state from a process-local cache.
+- Redis-first tap write-behind is no longer the production durability model. The existing queue flusher drains legacy events only; its old load tests are not production capacity evidence. Benchmark transaction latency and pool saturation before launch.
+- Client retries keep their batch ID and sealed duration; accepted or explicitly rejected batches are reconciled with the server and removed from the outbox. Network errors stay queued.
 - Payment callbacks must be verified and deduplicated by transaction ID.
 - Anomalies are recorded for review and do not automatically ban a player on the first event.
+
+See [persistence reliability](PERSISTENCE_RELIABILITY.md) for rollout, recovery tests and remaining limits.

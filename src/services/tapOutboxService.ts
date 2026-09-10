@@ -1,4 +1,4 @@
-export interface TapOutboxBatch { batchId: string; taps: number; startedAt: number; lastTapAt: number; sealed: boolean; }
+export interface TapOutboxBatch { batchId: string; taps: number; startedAt: number; lastTapAt: number; sealed: boolean; durationMs?: number; }
 export interface TapOutboxStorage { getItem(key: string): string | null; setItem(key: string, value: string): void; }
 
 const VERSION = 1;
@@ -22,18 +22,21 @@ export function appendTap(storage: TapOutboxStorage, userId: string, now = Date.
   if (!active || active.sealed) { if (batches.length >= MAX_STORED_BATCHES) throw new Error('Tap outbox is full'); active = { batchId, taps: 0, startedAt: now, lastTapAt: now, sealed: false }; batches.push(active); }
   active.taps += 1;
   active.lastTapAt = Math.max(active.lastTapAt, now);
-  if (active.taps >= MAX_BATCH_SIZE) active.sealed = true;
+  if (active.taps >= MAX_BATCH_SIZE) { active.durationMs = tapBatchDuration(active, active.lastTapAt); active.sealed = true; }
   save(storage, userId, batches);
   return structuredClone(active);
 }
 
-export function sealActiveBatch(storage: TapOutboxStorage, userId: string): TapOutboxBatch | undefined {
+export function sealActiveBatch(storage: TapOutboxStorage, userId: string, now = Date.now()): TapOutboxBatch | undefined {
   const batches = loadTapOutbox(storage, userId); const active = batches.at(-1);
-  if (active && !active.sealed) { active.sealed = true; save(storage, userId, batches); }
+  if (active && !active.sealed) { active.durationMs = tapBatchDuration(active, now); active.sealed = true; save(storage, userId, batches); }
   return active && structuredClone(active);
 }
 
 export function nextTapBatch(storage: TapOutboxStorage, userId: string): TapOutboxBatch | undefined { return loadTapOutbox(storage, userId).find((batch) => batch.sealed); }
 export function acknowledgeTapBatch(storage: TapOutboxStorage, userId: string, batchId: string): void { save(storage, userId, loadTapOutbox(storage, userId).filter((batch) => batch.batchId !== batchId)); }
 export function pendingTapCount(storage: TapOutboxStorage, userId: string): number { return loadTapOutbox(storage, userId).reduce((total, batch) => total + batch.taps, 0); }
-export function tapBatchDuration(batch: TapOutboxBatch, now = Date.now()): number { return Math.min(10_000, Math.max(100, Math.round(now - batch.startedAt))); }
+export function tapBatchDuration(batch: TapOutboxBatch, now = Date.now()): number {
+  if (typeof batch.durationMs === 'number' && Number.isFinite(batch.durationMs)) return Math.min(10_000, Math.max(100, Math.round(batch.durationMs)));
+  return Math.min(10_000, Math.max(100, Math.round((batch.sealed ? batch.lastTapAt : Math.max(now, batch.lastTapAt)) - batch.startedAt)));
+}

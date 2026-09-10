@@ -18,3 +18,11 @@ export function withPendingTaps(state: ServerGameState, pendingTaps: number): Se
   const accepted = Math.min(Math.max(0, Math.floor(pendingTaps)), state.energy);
   return { ...state, coins: state.coins + accepted * state.profitPerTap, energy: state.energy - accepted };
 }
+
+export function reconciledTapState(status: number, payload: unknown): ServerGameState {
+  const body = payload as { state?: ServerGameState; flagged?: boolean } | null;
+  const terminal = (status >= 200 && status < 300) || (status === 422 && body?.flagged === true);
+  const state = body?.state;
+  if (!terminal || !state || ![state.coins, state.energy, state.maximumEnergy, state.profitPerTap, state.profitPerHour, state.tapLevel, state.energyLevel, state.profitLevel, state.version].every(Number.isFinite)) throw new Error('Invalid tap sync response');
+  return state;
+}

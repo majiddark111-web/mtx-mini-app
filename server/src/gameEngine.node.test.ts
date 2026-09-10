@@ -35,7 +35,7 @@ describe('server-authoritative game engine', () => {
     assert.equal(applyOfflineProfit(state, 90 * 60_000).offlineProfit, 1_500);
   });
 
-  it('keeps sync traffic in the hot queue until a periodic persistence flush', async () => {
+  it('development adapter keeps sync traffic in memory until a flush', async () => {
     class CountingRepository extends MemoryGameRepository { writes = 0; override async save(state: Parameters<MemoryGameRepository['save']>[0]): Promise<void> { this.writes += 1; await super.save(state); } }
     const repository = new CountingRepository();
     const queue = new MemoryTapEventQueue();
@@ -61,7 +61,7 @@ describe('server-authoritative game engine', () => {
     assert.equal(repository.writes, 0);
   });
 
-  it('routes load through the Redis adapter and batches PostgreSQL writes', async () => {
+  it('legacy adapter batches writes (not the production transactional tap path)', async () => {
     class FakeRedis implements RedisCommands {
       commands = 0;
       async command<T>(parts: string[]): Promise<T> { this.commands += 1; return (parts[0] === 'LLEN' ? this.commands : 1) as T; }

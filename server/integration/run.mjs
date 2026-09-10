@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 import { createGameState } from '../src/gameEngine.ts';
 import { flushTapEvents, PostgresGameRepository, RedisBatchDeduplicator, RedisTapEventQueue } from '../src/productionStorage.ts';
 import { runMigrations } from '../migrations.mjs';
+import { PostgresGameplayPersistence } from '../src/gameplayPersistence.ts';
+import { ECONOMY_CONFIG } from '../../economy/economyConfig.ts';
 
 if (process.env.MTX_INTEGRATION_ALLOW_WRITE !== 'true') throw new Error('Set MTX_INTEGRATION_ALLOW_WRITE=true only for an isolated MTX test database and Redis namespace');
 const providerPath = process.env.MTX_INFRASTRUCTURE_MODULE;
@@ -43,8 +45,47 @@ try {
   const persistedTap = await postgres.query('SELECT accepted_taps FROM mtx_tap_events WHERE user_id = $1 AND batch_id = $2', [userId, batchId]);
   assert.equal(Number(persistedTap.rows[0]?.accepted_taps), 2, 'Tap event was not persisted');
 
+  const now = Date.now();
+  const first = new PostgresGameplayPersistence(postgres, redis);
+  const second = new PostgresGameplayPersistence(postgres, redis);
+  const sameBatch = { batchId: randomUUID(), taps: 3, durationMs: 1000 };
+  const copies = await Promise.all([first.applyTaps(userId, sameBatch, now), second.applyTaps(userId, sameBatch, now)]);
+  assert.equal(copies.filter((result) => !result.duplicate).length, 1, 'Concurrent copies credited twice');
+  assert.equal((await repository.get(userId))?.coins, 103);
+  await Promise.all(Array.from({ length: 20 }, (_, index) => (index % 2 ? first : second).applyTaps(userId, { batchId: randomUUID(), taps: 2, durationMs: 1000 }, now)));
+  assert.equal((await repository.get(userId))?.coins, 143, 'Concurrent batches overwrote each other');
+
+  const rollbackBatch = { batchId: randomUUID(), taps: 5, durationMs: 1000 };
+  const rollbackDatabase = {
+    query: (sql, values) => postgres.query(sql, values),
+    transaction: (operation) => postgres.transaction(async (database) => { await operation(database); throw new Error('BEFORE_COMMIT'); }),
+  };
+  await assert.rejects(new PostgresGameplayPersistence(rollbackDatabase, redis).applyTaps(userId, rollbackBatch, now), /BEFORE_COMMIT/);
+  assert.equal((await repository.get(userId))?.coins, 143);
+  const rollbackReceipt = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_receipts WHERE user_id = $1 AND batch_id = $2', [userId, rollbackBatch.batchId]);
+  assert.equal(Number(rollbackReceipt.rows[0]?.count), 0);
+  assert.equal((await first.applyTaps(userId, rollbackBatch, now)).state.coins, 148);
+
+  const uncertainBatch = { batchId: randomUUID(), taps: 5, durationMs: 1000 };
+  const uncertainDatabase = {
+    query: (sql, values) => postgres.query(sql, values),
+    transaction: async (operation) => { await postgres.transaction(operation); throw new Error('RESPONSE_LOST_AFTER_COMMIT'); },
+  };
+  await assert.rejects(new PostgresGameplayPersistence(uncertainDatabase, redis).applyTaps(userId, uncertainBatch, now), /RESPONSE_LOST_AFTER_COMMIT/);
+  const restarted = new PostgresGameplayPersistence(postgres, redis);
+  const replay = await restarted.applyTaps(userId, uncertainBatch, now + 86_400_000);
+  assert.equal(replay.duplicate, true);
+  assert.equal(replay.state.coins, 153, 'A lost commit response caused duplicate credit on retry');
+
+  const beforeOffline = await repository.get(userId);
+  await repository.save({ ...beforeOffline, profitPerHour: 1000, version: beforeOffline.version + 1 });
+  const offline = await Promise.all([first.creditOffline(userId, now + 3_600_000, ECONOMY_CONFIG), restarted.creditOffline(userId, now + 3_600_000, ECONOMY_CONFIG)]);
+  assert.equal(offline.reduce((total, result) => total + result.offlineProfit, 0), 1000, 'Offline income credited more than once');
+  assert.equal((await repository.get(userId))?.coins, 1153);
+
   process.stdout.write('MTX real infrastructure integration checks passed\n');
 } finally {
+  await postgres.query('DELETE FROM mtx_tap_receipts WHERE user_id = $1', [userId]).catch(() => undefined);
   await postgres.query('DELETE FROM mtx_tap_events WHERE user_id = $1', [userId]).catch(() => undefined);
   await postgres.query('DELETE FROM mtx_game_state WHERE user_id = $1', [userId]).catch(() => undefined);
   await postgres.query('DELETE FROM mtx_anti_cheat_anomalies WHERE user_id = $1', [userId]).catch(() => undefined);

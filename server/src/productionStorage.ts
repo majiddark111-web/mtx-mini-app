@@ -1,7 +1,8 @@
 import type { ServerGameState } from './gameEngine.ts';
-import { GameStorage, type BatchDeduplicator, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
+import { GameStorage, type GameRepository, type QueuedTapEvent, type TapEventQueue } from './gameStorage.ts';
 import { leaderboardPeriodKey, type LeaderboardEntry, type LeaderboardRepository, type LeaderboardScope } from './social.ts';
 import { activityFor, activityPeriodEnd, type ActivityTotals } from './periodActivity.ts';
+import { PostgresGameplayPersistence } from './gameplayPersistence.ts';
 
 export interface RedisCommands { command<T>(parts: string[]): Promise<T>; }
 export interface PostgresQueries { query<T>(sql: string, values: unknown[]): Promise<{ rows: T[] }>; transaction?<T>(operation: (database: PostgresQueries) => Promise<T>): Promise<T>; }
@@ -19,7 +20,7 @@ export class RedisTapEventQueue implements TapEventQueue {
   }
 }
 
-export class RedisBatchDeduplicator implements BatchDeduplicator {
+export class RedisBatchDeduplicator {
   constructor(privateRedis: RedisCommands, privatePrefix = 'mtx:tap-batch') { this.redis = privateRedis; this.prefix = privatePrefix; }
   private readonly redis: RedisCommands;
   private readonly prefix: string;
@@ -53,7 +54,7 @@ export async function flushTapEvents(queue: TapEventQueue, database: PostgresQue
 }
 
 export function productionGameStorage(redis: RedisCommands, database: PostgresQueries): GameStorage {
-  return new GameStorage(new PostgresGameRepository(database), new RedisTapEventQueue(redis), new RedisBatchDeduplicator(redis));
+  return new GameStorage(new PostgresGameRepository(database), new RedisTapEventQueue(redis), new PostgresGameplayPersistence(database, redis));
 }
 
 export class RedisLeaderboardRepository implements LeaderboardRepository {
