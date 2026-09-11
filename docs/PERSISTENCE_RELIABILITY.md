@@ -42,6 +42,31 @@ The real-infrastructure runner is `pnpm test:integration`. It requires `MTX_INTE
 
 No live infrastructure fault test was run as part of this local change. Local verification used Node 24.19.0; Render's configured Node 22 build/test remains a required deployment check.
 
+### Light test on shared staging infrastructure
+
+With the owner's authorization, run `pnpm test:integration:isolated` **on the staging backend**, where `DATABASE_URL` and `REDIS_URL` are already configured. Do not use the unscoped `test:integration` command on a database shared with the game.
+
+The isolated entry point ignores caller-supplied provider overrides. It creates a random `mtx_test_<uuid>` schema and sets a transaction-local search path containing only that schema (never public). It runs the existing migrations inside that scope, not on the game tables. All Redis keys, including legacy receipt reads, receive a unique `mtx:test:<uuid>:` prefix. Only the commands needed for the runner are allowed; no FLUSHDB, FLUSHALL or broad key scan is used.
+
+The test uses at most two PostgreSQL connections, 15-second SQL statement and three-second lock timeouts inside test transactions, and 20 queued concurrent tap operations. This is a correctness smoke test on shared resources, **not a load/capacity benchmark**. The database role needs permission to create its own schema; lack of permission fails setup without broadening privileges.
+
+Cleanup runs on success/failure and on catchable SIGINT/SIGTERM. It stops new test operations, waits for submitted operations, deletes only exact test Redis keys, drops only the generated schema whose PostgreSQL OID still matches the one created, and verifies both are absent. A cleanup failure produces a nonzero exit, not a pass. Writes to Redis also receive a fallback one-hour expiry if they have no TTL.
+
+Required final log markers:
+
+```text
+MTX_ISOLATED_CLEANUP_OK schema removed; test Redis keys verified absent
+MTX_ISOLATED_TEST_PASS_AND_CLEAN
+```
+
+Only both markers plus successful command exit confirm that tests and cleanup succeeded. `MTX_ISOLATED_CLEANUP_FAILED` requires attention even if earlier checks passed. The logged schema/prefix contains no credentials.
+
+A machine crash, SIGKILL, connection loss during setup/cleanup or platform hard termination can prevent verification/deletion. PostgreSQL schemas do not expire automatically. In that case inspect the exact logged schema/prefix; never delete all `mtx_*` tables or all Redis keys. Do not claim cleanup without a successful verification.
+
+For a one-off Render build check, save the current backend Build Command and append ` && pnpm test:integration:isolated` after it, then deploy the commit containing this script. Keep the existing installation/build/migration commands. After the successful clean marker, restore the original Build Command so future builds do not repeat the test. Do not append this command to the frontend build or server Start Command. No credentials need to be copied out of Render.
+
+The staging restart and disconnect/reopen checks were reported successful by the user. The real concurrent infrastructure run remains pending until its final log markers are observed.
+
 ## Staging acceptance
 
 1. Open the app inside Telegram, record balance/tap power and make ten slow taps. Wait for sync, close/reopen and compare with the acknowledged balance (allow separately earned offline income).

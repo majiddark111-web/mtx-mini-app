@@ -52,6 +52,8 @@ pnpm test:integration
 
 The runner verifies versioned migrations, PostgreSQL rollback, legacy Redis claims/queue flushing, stale-state rejection, simultaneous tap batches, durable receipt replay, a simulated lost commit response, and concurrent offline credit. It refuses to run without the explicit write flag and removes its own UUID-scoped records afterward. Use only an isolated test database. Use `pnpm db:migrate` before starting the API and `pnpm server:start` for the persistent Node runtime.
 
+For an owner-authorized light check using the **existing staging database/Redis**, use `pnpm test:integration:isolated` instead. This creates a private temporary schema and namespaced keys, then verifies cleanup. Read the [shared-staging test instructions and crash limits](docs/PERSISTENCE_RELIABILITY.md#light-test-on-shared-staging-infrastructure) first.
+
 ## Architecture
 
 ```mermaid

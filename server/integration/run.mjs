@@ -46,6 +46,7 @@ try {
   assert.equal(Number(persistedTap.rows[0]?.accepted_taps), 2, 'Tap event was not persisted');
 
   const now = Date.now();
+  process.stdout.write('MTX_CHECK concurrent duplicate and 20 distinct tap batches\n');
   const first = new PostgresGameplayPersistence(postgres, redis);
   const second = new PostgresGameplayPersistence(postgres, redis);
   const sameBatch = { batchId: randomUUID(), taps: 3, durationMs: 1000 };
@@ -56,6 +57,7 @@ try {
   assert.equal((await repository.get(userId))?.coins, 143, 'Concurrent batches overwrote each other');
 
   const rollbackBatch = { batchId: randomUUID(), taps: 5, durationMs: 1000 };
+  process.stdout.write('MTX_CHECK rollback before commit\n');
   const rollbackDatabase = {
     query: (sql, values) => postgres.query(sql, values),
     transaction: (operation) => postgres.transaction(async (database) => { await operation(database); throw new Error('BEFORE_COMMIT'); }),
@@ -67,6 +69,7 @@ try {
   assert.equal((await first.applyTaps(userId, rollbackBatch, now)).state.coins, 148);
 
   const uncertainBatch = { batchId: randomUUID(), taps: 5, durationMs: 1000 };
+  process.stdout.write('MTX_CHECK lost commit response and replay after restart\n');
   const uncertainDatabase = {
     query: (sql, values) => postgres.query(sql, values),
     transaction: async (operation) => { await postgres.transaction(operation); throw new Error('RESPONSE_LOST_AFTER_COMMIT'); },
@@ -78,10 +81,15 @@ try {
   assert.equal(replay.state.coins, 153, 'A lost commit response caused duplicate credit on retry');
 
   const beforeOffline = await repository.get(userId);
+  process.stdout.write('MTX_CHECK concurrent offline income\n');
   await repository.save({ ...beforeOffline, profitPerHour: 1000, version: beforeOffline.version + 1 });
   const offline = await Promise.all([first.creditOffline(userId, now + 3_600_000, ECONOMY_CONFIG), restarted.creditOffline(userId, now + 3_600_000, ECONOMY_CONFIG)]);
   assert.equal(offline.reduce((total, result) => total + result.offlineProfit, 0), 1000, 'Offline income credited more than once');
   assert.equal((await repository.get(userId))?.coins, 1153);
+  const receiptCount = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_receipts WHERE user_id = $1', [userId]);
+  const eventCount = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_events WHERE user_id = $1', [userId]);
+  assert.equal(Number(receiptCount.rows[0]?.count), 23, 'Receipt count is not exactly one per unique batch');
+  assert.equal(Number(eventCount.rows[0]?.count), 24, 'Audit count contains a duplicate or a rolled-back event');
 
   process.stdout.write('MTX real infrastructure integration checks passed\n');
 } finally {
