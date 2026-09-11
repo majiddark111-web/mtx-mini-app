@@ -18,6 +18,7 @@ import { AntiCheatMonitor, deriveSessionKey, MemoryReplayProtection, type Replay
 import { rewardHistory } from './rewardHistory.ts';
 import { markNotificationsRead, notificationReadAt } from './notificationReadState.ts';
 import { achievementsFor } from './achievements.ts';
+import { TapRateLimitError } from './tapRateBudget.ts';
 
 const ipLimiter = new RateLimiter(60, 60_000);
 const userLimiter = new RateLimiter(120, 60_000);
@@ -298,6 +299,7 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
     }
     return json({ error: 'Not found' }, 404, cors);
   } catch (error) {
+    if (error instanceof TapRateLimitError) return json({ error: 'Tap sync rate limit', retryAfterMs: error.retryAfterMs }, 429, { ...cors, 'retry-after': String(Math.ceil(error.retryAfterMs / 1000)) });
     if (error instanceof ValidationError || error instanceof SyntaxError) return json({ error: 'Invalid request' }, 400, cors);
     if (error instanceof Error && error.message === 'INSUFFICIENT_COINS') return json({ error: 'Insufficient coins' }, 402, cors);
     if (error instanceof Error && (error.message === 'ITEM_UNAVAILABLE' || error.message === 'ITEM_NOT_OWNED' || error.message === 'BOOST_NOT_NEEDED' || error.message === 'PRICE_CHANGED' || error.message === 'STATE_VERSION_CONFLICT' || error.message === 'IDEMPOTENCY_KEY_REUSED')) return json({ error: error.message === 'BOOST_NOT_NEEDED' ? 'Energy is already full' : 'Conflict' }, 409, cors);

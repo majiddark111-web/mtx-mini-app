@@ -57,16 +57,17 @@ try {
   assert.equal((await repository.get(userId))?.coins, 143, 'Concurrent batches overwrote each other');
 
   const rollbackBatch = { batchId: randomUUID(), taps: 5, durationMs: 1000 };
+  const retryTime = now + 1000;
   process.stdout.write('MTX_CHECK rollback before commit\n');
   const rollbackDatabase = {
     query: (sql, values) => postgres.query(sql, values),
     transaction: (operation) => postgres.transaction(async (database) => { await operation(database); throw new Error('BEFORE_COMMIT'); }),
   };
-  await assert.rejects(new PostgresGameplayPersistence(rollbackDatabase, redis).applyTaps(userId, rollbackBatch, now), /BEFORE_COMMIT/);
+  await assert.rejects(new PostgresGameplayPersistence(rollbackDatabase, redis).applyTaps(userId, rollbackBatch, retryTime), /BEFORE_COMMIT/);
   assert.equal((await repository.get(userId))?.coins, 143);
   const rollbackReceipt = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_receipts WHERE user_id = $1 AND batch_id = $2', [userId, rollbackBatch.batchId]);
   assert.equal(Number(rollbackReceipt.rows[0]?.count), 0);
-  assert.equal((await first.applyTaps(userId, rollbackBatch, now)).state.coins, 148);
+  assert.equal((await first.applyTaps(userId, rollbackBatch, retryTime)).state.coins, 148);
 
   const uncertainBatch = { batchId: randomUUID(), taps: 5, durationMs: 1000 };
   process.stdout.write('MTX_CHECK lost commit response and replay after restart\n');
@@ -74,7 +75,7 @@ try {
     query: (sql, values) => postgres.query(sql, values),
     transaction: async (operation) => { await postgres.transaction(operation); throw new Error('RESPONSE_LOST_AFTER_COMMIT'); },
   };
-  await assert.rejects(new PostgresGameplayPersistence(uncertainDatabase, redis).applyTaps(userId, uncertainBatch, now), /RESPONSE_LOST_AFTER_COMMIT/);
+  await assert.rejects(new PostgresGameplayPersistence(uncertainDatabase, redis).applyTaps(userId, uncertainBatch, retryTime), /RESPONSE_LOST_AFTER_COMMIT/);
   const restarted = new PostgresGameplayPersistence(postgres, redis);
   const replay = await restarted.applyTaps(userId, uncertainBatch, now + 86_400_000);
   assert.equal(replay.duplicate, true);
@@ -83,13 +84,26 @@ try {
   const beforeOffline = await repository.get(userId);
   process.stdout.write('MTX_CHECK concurrent offline income\n');
   await repository.save({ ...beforeOffline, profitPerHour: 1000, version: beforeOffline.version + 1 });
-  const offline = await Promise.all([first.creditOffline(userId, now + 3_600_000, ECONOMY_CONFIG), restarted.creditOffline(userId, now + 3_600_000, ECONOMY_CONFIG)]);
+  const offlineTime = beforeOffline.lastSeenAt + 3_600_000;
+  const offline = await Promise.all([first.creditOffline(userId, offlineTime, ECONOMY_CONFIG), restarted.creditOffline(userId, offlineTime, ECONOMY_CONFIG)]);
   assert.equal(offline.reduce((total, result) => total + result.offlineProfit, 0), 1000, 'Offline income credited more than once');
   assert.equal((await repository.get(userId))?.coins, 1153);
   const receiptCount = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_receipts WHERE user_id = $1', [userId]);
   const eventCount = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_events WHERE user_id = $1', [userId]);
   assert.equal(Number(receiptCount.rows[0]?.count), 23, 'Receipt count is not exactly one per unique batch');
   assert.equal(Number(eventCount.rows[0]?.count), 24, 'Audit count contains a duplicate or a rolled-back event');
+
+  process.stdout.write('MTX_CHECK shared server-time tap budget and retry after throttling\n');
+  const bursts = [randomUUID(), randomUUID()].map((id) => ({ taps: 50, durationMs: 10000, batchId: id }));
+  const budgetResults = await Promise.allSettled([first.applyTaps(userId, bursts[0], offlineTime), second.applyTaps(userId, bursts[1], offlineTime)]);
+  assert.equal(budgetResults.filter((result) => result.status === 'fulfilled').length, 1);
+  const deferredIndex = budgetResults.findIndex((result) => result.status === 'rejected');
+  assert.match(budgetResults[deferredIndex].reason.message, /TAP_RATE_LIMITED/);
+  const deferredReceipt = await postgres.query('SELECT COUNT(*)::int AS count FROM mtx_tap_receipts WHERE user_id = $1 AND batch_id = $2', [userId, bursts[deferredIndex].batchId]);
+  assert.equal(Number(deferredReceipt.rows[0]?.count), 0, 'Throttling must not consume the batch receipt');
+  assert.equal((await repository.get(userId))?.coins, 1203);
+  const deferredRetry = await restarted.applyTaps(userId, bursts[deferredIndex], offlineTime + 3334);
+  assert.equal(deferredRetry.state.coins, 1253); assert.equal(deferredRetry.duplicate, false);
 
   process.stdout.write('MTX real infrastructure integration checks passed\n');
 } finally {

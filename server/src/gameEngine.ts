@@ -22,6 +22,7 @@ export interface ServerGameState {
   flaggedBatches: number;
   version: number;
   activity?: ActivityTotals;
+  tapRateBudget?: { availableMilliTaps: number; updatedAt: number };
 }
 
 export interface TapBatch { taps: number; durationMs: number; batchId: string; }

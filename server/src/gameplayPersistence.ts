@@ -1,4 +1,5 @@
-import { applyOfflineProfit, applyTapBatch, createGameState, type ServerGameState, type TapBatch } from './gameEngine.ts';
+import { applyOfflineProfit, createGameState, type ServerGameState, type TapBatch } from './gameEngine.ts';
+import { applyRateLimitedTapBatch } from './tapRateBudget.ts';
 import type { GameplayPersistence, TapSyncResult } from './gameStorage.ts';
 import type { PostgresQueries, RedisCommands } from './productionStorage.ts';
 import type { EconomyConfig } from '../../economy/economyConfig.ts';
@@ -37,7 +38,7 @@ export class PostgresGameplayPersistence implements GameplayPersistence {
       const legacyClaim = !legacyEvent && this.redis ? await this.redis.command<string | null>(['GET', `mtx:tap-batch:${userId}:${batch.batchId}`]) : null;
       if (legacyEvent && legacyEvent.taps !== batch.taps) throw new Error('IDEMPOTENCY_KEY_REUSED');
       const duplicate = Boolean(legacyEvent || legacyClaim);
-      const result = duplicate ? { state: current, acceptedTaps: legacyEvent?.accepted_taps ?? 0, flagged: false } : applyTapBatch(current, batch, Math.max(now, current.lastSeenAt));
+      const result = duplicate ? { state: current, acceptedTaps: legacyEvent?.accepted_taps ?? 0, flagged: false } : applyRateLimitedTapBatch(current, batch, Math.max(now, current.lastSeenAt));
       await database.query('INSERT INTO mtx_tap_receipts (user_id, batch_id, taps, accepted_taps, flagged, created_at) VALUES ($1, $2, $3, $4, $5, $6)', [userId, batch.batchId, batch.taps, result.acceptedTaps, result.flagged, new Date(now).toISOString()]);
       if (!duplicate) {
         await this.save(database, result.state);

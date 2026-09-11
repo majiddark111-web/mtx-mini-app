@@ -34,6 +34,8 @@ The browser interceptor creates these automatically. A repeated nonce returns `4
 
 Tap batches above 15 taps/second are rejected and flagged. The client normally synchronizes every 2 seconds or 50 taps. Energy and offline time are derived on the server.
 
+In addition to the per-batch check, a shared server-time budget permits a maximum burst of 50 taps and refills at 15 taps/second. Exhaustion returns `429 { error: "Tap sync rate limit", retryAfterMs }` plus a `Retry-After` header in seconds. Keep the same batch queued and retry later with fresh signing headers. A throttled batch has not been credited or given a receipt. This differs from a terminal `422` rejection and does not imply cheating.
+
 For taps, `200` returns `{ state, acceptedTaps, duplicate }`; `422` with `flagged: true` and `state` is a terminal rejection, not a transport failure. Reconcile with that state and acknowledge the rejected batch without credit. Retry network/5xx failures using the same batch ID, taps and sealed duration, but fresh request-signing nonce/timestamp. Production commits the result and a durable per-user batch receipt together. Replays return current authoritative state without applying the batch again; reusing an ID with a different tap count is rejected. Retain receipts to preserve this guarantee.
 
 ## Commerce and wallet
@@ -91,5 +93,5 @@ The Testnet flow embeds the server-issued order ID in the TON message, then matc
 | 403 | Origin, ban or admin authorization failure |
 | 409 | Replay, duplicate state transition or unavailable item |
 | 422 | Implausible tap batch |
-| 429 | IP/user rate limit exceeded |
+| 429 | IP/user request limit or shared tap budget exceeded; retain unacknowledged tap batches |
 | 503 | Required production provider unavailable |

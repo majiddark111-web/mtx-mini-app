@@ -28,6 +28,25 @@ async function signedRequest(url: string, token: string, sessionKey: string, ini
 }
 
 describe('Telegram authentication security', () => {
+  it('returns retryable HTTP 429 with CORS for a burst instead of dropping queued taps', async () => {
+    const fixedNow = Date.now();
+    class FixedClockStorage extends GameStorage {
+      override applyTaps(userId: string, batch: Parameters<GameStorage['applyTaps']>[1]) { return super.applyTaps(userId, batch, fixedNow); }
+    }
+    const game = new FixedClockStorage();
+    const login = await handleRequest(authRequest(await signedInitData()), env);
+    const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };
+    const send = async (batchId: string) => handleRequestWithStorage(await signedRequest('https://api.mtx.test/api/game/taps', token, sessionKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taps: 50, durationMs: 10000, batchId }) }), env, game);
+    assert.equal((await send('http-budget-first')).status, 200);
+    const limited = await send('http-budget-next');
+    assert.equal(limited.status, 429);
+    assert.equal(limited.headers.get('retry-after'), '4');
+    assert.equal(limited.headers.get('access-control-allow-origin'), env.APP_ORIGIN);
+    const body = await limited.json() as { retryAfterMs: number; flagged?: boolean };
+    assert.equal(body.retryAfterMs, 3334); assert.equal(body.flagged, undefined);
+    assert.equal((await game.stateFor('42', fixedNow)).coins, 50);
+    assert.equal((await send('http-budget-first')).status, 200, 'a committed replay must not spend more allowance');
+  });
   it('keeps both distinct tap batches when they arrive simultaneously', async () => {
     const login = await handleRequest(authRequest(await signedInitData()), env);
     const { token, sessionKey } = await login.json() as { token: string; sessionKey: string };

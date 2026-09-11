@@ -1,4 +1,5 @@
-import { applyOfflineProfit, applyTapBatch, createGameState, type ServerGameState, type TapBatch } from './gameEngine.ts';
+import { applyOfflineProfit, createGameState, type ServerGameState, type TapBatch } from './gameEngine.ts';
+import { applyRateLimitedTapBatch } from './tapRateBudget.ts';
 import type { EconomyConfig } from '../../economy/economyConfig.ts';
 
 export interface TapSyncResult { state: ServerGameState; acceptedTaps: number; flagged: boolean; duplicate: boolean; }
@@ -75,7 +76,7 @@ export class GameStorage {
       const key = `${userId}:${batch.batchId}`;
       const receipt = this.receipts.get(key);
       if (receipt) { if (receipt.taps !== batch.taps) throw new Error('IDEMPOTENCY_KEY_REUSED'); return { state: current, acceptedTaps: receipt.acceptedTaps, flagged: receipt.flagged, duplicate: true }; }
-      const result = applyTapBatch(current, batch, now);
+      const result = applyRateLimitedTapBatch(current, batch, Math.max(now, current.lastSeenAt));
       await this.queue.enqueue({ userId, batch, acceptedTaps: result.acceptedTaps, receivedAt: now });
       this.saveHot(result.state);
       this.receipts.set(key, { taps: batch.taps, acceptedTaps: result.acceptedTaps, flagged: result.flagged });

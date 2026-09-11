@@ -4,6 +4,7 @@ export const GAME_CONFIG = {
   tapSyncIntervalMs: 2_000,
   tapBatchSize: 50,
   maximumTapsPerSecond: 15,
+  tapBurstAllowance: 50,
   maximumEnergy: 1_000,
   energyRechargeIntervalMs: ENERGY_RECHARGE_INTERVAL_MS,
   offlineProfitCapHours: ECONOMY_CONFIG.sources.offline.capHours,

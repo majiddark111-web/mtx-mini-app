@@ -65,7 +65,15 @@ A machine crash, SIGKILL, connection loss during setup/cleanup or platform hard 
 
 For a one-off Render build check, save the current backend Build Command and append ` && pnpm test:integration:isolated` after it, then deploy the commit containing this script. Keep the existing installation/build/migration commands. After the successful clean marker, restore the original Build Command so future builds do not repeat the test. Do not append this command to the frontend build or server Start Command. No credentials need to be copied out of Render.
 
-The staging restart and disconnect/reopen checks were reported successful by the user. The real concurrent infrastructure run remains pending until its final log markers are observed.
+The staging restart and disconnect/reopen checks were reported successful by the user. The user also confirmed observing `MTX_ISOLATED_TEST_PASS_AND_CLEAN` for the first isolated infrastructure run and removing the temporary Build Command addition. This is user-reported validation, not a directly observed agent log.
+
+The later server-time budget change adds a concurrent throttle/retry scenario to the same isolated runner. That updated live check remains pending after deployment; local tests use controlled server timestamps and transaction doubles.
+
+## Server-time budget rollout
+
+New tap batches also commit an optional `tapRateBudget` inside the existing state JSON. PostgreSQL row locking makes its 50-tap burst allowance and 15-taps/second refill shared across API instances. No new migration, credential or environment setting is required. Batch deduplication happens before spending allowance.
+
+If queued input exceeds the allowance after reconnection, HTTP 429 postpones it; no receipt, energy spend or score change is committed. The current client retains it and retries on its normal sync interval. Existing 422 rejection behavior is unchanged. See [the security boundary](../SECURITY.md#shared-server-time-tap-allowance) for exact limits.
 
 ## Staging acceptance
 
@@ -76,7 +84,7 @@ The staging restart and disconnect/reopen checks were reported successful by the
 
 ## Remaining limits
 
-- Receipts prevent repeated application of the same batch ID; they are not a complete anti-cheat mechanism. Client durations can still be forged with new IDs; server-time rate budgets require separate work.
+- Receipts prevent repeated application of the same batch ID, while the shared server-time budget bounds aggregate new batches. Neither proves that a human produced the input; automation within the limits and multi-account abuse still need monitoring.
 - The browser outbox is localStorage, not a backup. Clearing it, exceeding browser storage, or concurrent writable tabs can lose unsynced local input. Server row locks protect requests that arrive, not input overwritten before transmission.
 - Optimistic numbers can adjust when the server rejects taps or has different energy. This is not necessarily lost committed progress.
 - Redis rankings/anomaly logging are outside the gameplay transaction. An unavailable derived service may cause an error after gameplay committed; a retry is safe for the balance. Monitoring/reconciliation of those derived records remains necessary.

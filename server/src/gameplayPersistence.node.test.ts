@@ -106,3 +106,50 @@ test('a rejected batch stays rejected on retry and does not keep adding flags', 
   const retry = await service.applyTaps('42', { ...invalid, durationMs: 10000 }, now + 10000);
   assert.equal(retry.flagged, true); assert.equal(retry.state.coins, 0); assert.equal(retry.state.flaggedBatches, 1);
 });
+
+test('two instances cannot turn forged durations into an unlimited simultaneous tap burst', async () => {
+  const db = new TransactionDatabase();
+  const first = new PostgresGameplayPersistence(db); const second = new PostgresGameplayPersistence(db);
+  const full = { batchId: 'server-budget-first', taps: 50, durationMs: 10000 };
+  const deferred = { ...full, batchId: 'server-budget-second' };
+  const results = await Promise.allSettled([first.applyTaps('42', full, now), second.applyTaps('42', deferred, now)]);
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  const rejected = results.find((result) => result.status === 'rejected');
+  assert.match(rejected?.reason.message, /TAP_RATE_LIMITED/);
+  assert.equal(db.states.get('42')?.coins, 50);
+  assert.equal(db.receipts.size, 1); assert.equal(db.events.size, 1);
+  assert.equal(db.states.get('42')?.flaggedBatches, 0, 'transport bursts are not proof of cheating');
+  const retried = await second.applyTaps('42', deferred, now + 3334);
+  assert.equal(retried.state.coins, 100);
+  assert.equal(retried.duplicate, false, 'a throttled batch must remain retryable');
+});
+
+test('committed batch replays and process restarts do not reset or spend the shared tap budget', async () => {
+  const db = new TransactionDatabase(); const full = { batchId: 'server-budget-full', taps: 50, durationMs: 10000 };
+  db.loseCommitResponse = true;
+  await assert.rejects(new PostgresGameplayPersistence(db).applyTaps('42', full, now), /CONNECTION_LOST/);
+  const restarted = new PostgresGameplayPersistence(db);
+  assert.equal((await restarted.applyTaps('42', full, now)).duplicate, true);
+  await assert.rejects(restarted.applyTaps('42', { ...batch, taps: 1 }, now), /TAP_RATE_LIMITED/);
+  assert.equal((await restarted.applyTaps('42', { ...batch, taps: 15 }, now + 1000)).state.coins, 65);
+});
+
+test('server time replenishes 15 taps per second and idle allowance remains bounded', async () => {
+  const db = new TransactionDatabase(); const service = new PostgresGameplayPersistence(db);
+  await service.applyTaps('42', { ...batch, taps: 50, durationMs: 10000 }, now);
+  for (let second = 1; second <= 10; second += 1) {
+    await service.applyTaps('42', { taps: 15, durationMs: 10000, batchId: 'server-second-' + second }, now + second * 1000);
+    await assert.rejects(service.applyTaps('42', { taps: 1, durationMs: 10000, batchId: 'server-excess-' + second }, now + second * 1000), /TAP_RATE_LIMITED/);
+  }
+  assert.equal(db.states.get('42')?.coins, 200);
+  await service.applyTaps('42', { taps: 50, durationMs: 10000, batchId: 'after-long-idle' }, now + 86_400_000);
+  await assert.rejects(service.applyTaps('42', { taps: 1, durationMs: 10000, batchId: 'extra-after-idle' }, now + 86_400_000), /TAP_RATE_LIMITED/);
+});
+
+test('offline reads and backwards server timestamps cannot reset the tap allowance', async () => {
+  const db = new TransactionDatabase(); const service = new PostgresGameplayPersistence(db);
+  await service.applyTaps('42', { ...batch, taps: 50, durationMs: 10000 }, now);
+  await service.creditOffline('42', now, ECONOMY_CONFIG);
+  await assert.rejects(service.applyTaps('42', { ...batch, batchId: 'after-state-read', taps: 1 }, now - 1000), /TAP_RATE_LIMITED/);
+  assert.equal(db.states.get('42')?.coins, 50);
+});
