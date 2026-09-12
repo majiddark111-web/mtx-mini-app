@@ -67,7 +67,9 @@ For a one-off Render build check, save the current backend Build Command and app
 
 The staging restart and disconnect/reopen checks were reported successful by the user. The user also confirmed observing `MTX_ISOLATED_TEST_PASS_AND_CLEAN` for the first isolated infrastructure run and removing the temporary Build Command addition. This is user-reported validation, not a directly observed agent log.
 
-The later server-time budget change adds a concurrent throttle/retry scenario to the same isolated runner. That updated live check remains pending after deployment; local tests use controlled server timestamps and transaction doubles.
+The later server-time budget change adds a concurrent throttle/retry scenario to the same isolated runner. The user subsequently reported that this updated staging test and temporary-data cleanup also passed, and that the temporary Build Command suffix was removed. These remain user-reported results, not directly inspected logs.
+
+A separate bounded persistence load runner is now available: see [load smoke test scope and acceptance](LOAD_TESTING.md). Its real-infrastructure performance results are still pending; the prior correctness pass is not a load result.
 
 ## Server-time budget rollout
 

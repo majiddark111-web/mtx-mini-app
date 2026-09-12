@@ -54,6 +54,8 @@ The runner verifies versioned migrations, PostgreSQL rollback, legacy Redis clai
 
 For an owner-authorized light check using the **existing staging database/Redis**, use `pnpm test:integration:isolated` instead. This creates a private temporary schema and namespaced keys, then verifies cleanup. Read the [shared-staging test instructions and crash limits](docs/PERSISTENCE_RELIABILITY.md#light-test-on-shared-staging-infrastructure) first.
 
+For the separately scoped **1/5/10-user persistence load smoke check**, use `pnpm test:load:isolated` only after reading its [fixed limits, cleanup and Render instructions](docs/LOAD_TESTING.md). It is not a whole-application capacity test.
+
 ## Architecture
 
 ```mermaid
