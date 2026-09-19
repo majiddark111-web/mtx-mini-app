@@ -1,0 +1,66 @@
+name: mtx
+x-api: &api
+  image: mtx-api:${MTX_RELEASE:-local}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+    target: api
+  environment:
+    MTX_DOMAIN: ${MTX_DOMAIN:?Set MTX_DOMAIN in deploy/.env}
+    MTX_BOT_USERNAME: ${MTX_BOT_USERNAME:-TOKXTAPBOT}
+  secrets:
+    - api_config
+  networks: [backend]
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+services:
+  migrate:
+    <<: *api
+    command: [node, --experimental-strip-types, server/deployment/start.mjs, migrate]
+    restart: "no"
+  api:
+    <<: *api
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/healthz',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+  web:
+    image: mtx-web:${MTX_RELEASE:-local}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+      args:
+        MTX_DOMAIN: ${MTX_DOMAIN:?Set MTX_DOMAIN in deploy/.env}
+        MTX_BOT_USERNAME: ${MTX_BOT_USERNAME:-TOKXTAPBOT}
+    environment:
+      MTX_DOMAIN: ${MTX_DOMAIN}
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [backend]
+    volumes: [caddy_data:/data, caddy_config:/config]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+secrets:
+  api_config:
+    file: ./secrets/api.json
+networks:
+  backend:
+volumes:
+  caddy_data:
+  caddy_config:

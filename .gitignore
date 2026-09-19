@@ -5,6 +5,11 @@ dist/
 !.env.example
 *.log
 .build-verification/
+deploy/secrets/
+deploy/backups/
+deploy/runtime/
+*.backup
+*.dump
 dist-phase3/
 dist-phase4/
 dist-phase5/
