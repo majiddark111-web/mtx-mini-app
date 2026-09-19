@@ -1,10 +1,12 @@
 # MTX Telegram Mini App
 
+For migration away from Render, start with [راهنمای فارسی بستهٔ قابل‌انتقال](PORTABLE-START-FA.md), the [portable operator runbook](docs/PORTABLE-DEPLOYMENT.md), and the [verification report](docs/PORTABLE-VALIDATION.md). Existing Render instructions below remain for compatibility.
+
 MTX is a TypeScript Telegram tap-to-earn mini app with a React/Vite client and a Fetch-compatible server core. It includes server-authoritative taps and energy, offline profit, configurable economy, store/inventory, wallet verification hooks, missions, daily challenges, referrals, Redis leaderboards, an isolated admin flow and replay-safe request signing.
 
 ## Requirements
 
-- Node.js 22.6 or newer (Node 24 LTS recommended)
+- Node.js 22.x, latest patch release (matches package.json and portable images)
 - pnpm 9 or newer
 - A Telegram bot token for real Telegram authentication
 - PostgreSQL and Redis for production; local development uses in-memory adapters

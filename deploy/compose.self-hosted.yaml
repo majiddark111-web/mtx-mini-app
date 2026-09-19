@@ -1,0 +1,84 @@
+services:
+  tls:
+    build:
+      context: ..
+      dockerfile: deploy/Infrastructure.Dockerfile
+      target: tls
+    restart: "no"
+    network_mode: none
+    volumes: [tls_authority:/authority, tls_ca:/ca, tls_postgres:/postgres, tls_redis:/redis]
+  postgres:
+    build:
+      context: ..
+      dockerfile: deploy/Infrastructure.Dockerfile
+      target: postgres
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: mtx
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [postgres_admin_password, postgres_password]
+    volumes: [postgres_data:/var/lib/postgresql, tls_postgres:/run/mtx-tls:ro]
+    networks: [backend]
+    depends_on:
+      tls: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U mtx -d mtx && psql -U mtx -d mtx -Atqc 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  redis:
+    build:
+      context: ..
+      dockerfile: deploy/Infrastructure.Dockerfile
+      target: redis
+    restart: unless-stopped
+    stop_grace_period: 60s
+    secrets: [redis_password]
+    volumes: [redis_data:/data, tls_redis:/run/mtx-tls:ro, tls_ca:/run/mtx-ca:ro]
+    networks: [backend]
+    depends_on:
+      tls: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, sh, /usr/local/bin/mtx-redis-health.sh]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  migrate:
+    environment:
+      MTX_SELF_HOSTED: "true"
+      NODE_EXTRA_CA_CERTS: /run/mtx-ca/ca.crt
+    secrets: [postgres_password, redis_password]
+    volumes: [tls_ca:/run/mtx-ca:ro]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  api:
+    environment:
+      MTX_SELF_HOSTED: "true"
+      NODE_EXTRA_CA_CERTS: /run/mtx-ca/ca.crt
+    secrets: [postgres_password, redis_password]
+    volumes: [tls_ca:/run/mtx-ca:ro]
+secrets:
+  postgres_admin_password:
+    file: ./secrets/postgres-admin-password
+  postgres_password:
+    file: ./secrets/postgres-password
+  redis_password:
+    file: ./secrets/redis-password
+volumes:
+  postgres_data:
+  redis_data:
+  tls_authority:
+  tls_ca:
+  tls_postgres:
+  tls_redis:

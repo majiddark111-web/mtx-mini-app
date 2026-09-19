@@ -1,0 +1,76 @@
+name: MTX portable container check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Check existing code on Node 22
+        run: |
+          npm install --global pnpm@10.34.5
+          pnpm install --frozen-lockfile
+          pnpm check
+          pnpm lint
+          pnpm test
+          pnpm build
+      - name: Create disposable configuration (no repository secrets)
+        run: |
+          node server/deployment/initialize.mjs ci.mtx.test
+          node --input-type=module <<'JS'
+          import { readFile, writeFile } from 'node:fs/promises';
+          import { hashAdminPassword } from './server/adminCredentials.mjs';
+          const path = 'deploy/secrets/api.json';
+          const config = JSON.parse(await readFile(path, 'utf8'));
+          Object.assign(config, {
+            TELEGRAM_BOT_TOKEN: '123456:' + 'x'.repeat(35),
+            ADMIN_USERNAME: 'ci-operator',
+            ADMIN_PASSWORD_HASH: hashAdminPassword('temporary-ci-password-only'),
+            ADMIN_TOTP_SECRET: 'A'.repeat(32),
+            TONCENTER_API_KEY: 'temporary-ci-key',
+            TON_TREASURY_ADDRESS: '0:' + '0'.repeat(64),
+          });
+          await writeFile(path, JSON.stringify(config));
+          JS
+      - name: Validate shell and Compose
+        run: |
+          for script in deploy/*.sh; do bash -n "$script"; done
+          docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml config --quiet
+      - name: Build all images
+        run: docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml build
+      - name: Validate Caddy and generated wallet manifest
+        run: |
+          docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml run --rm --no-deps web caddy validate --config /etc/caddy/Caddyfile
+          docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml run --rm --no-deps web cat /srv/tonconnect-manifest.json | grep -F 'https://ci.mtx.test'
+      - name: Start API against private TLS infrastructure
+        run: |
+          docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml up -d --wait api
+          docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml exec -T api node -e "Promise.all([fetch('http://localhost:3000/healthz'),fetch('http://localhost:3000/api/session')]).then(([h,a])=>process.exit(h.ok&&a.status===401?0:1)).catch(()=>process.exit(1))"
+      - name: Restart and verify persistence with disposable probe
+        run: |
+          compose() { docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml "$@"; }
+          compose exec -T postgres psql -U mtx -d mtx -v ON_ERROR_STOP=1 -c "CREATE TABLE mtx_portable_backup_probe (id integer PRIMARY KEY, marker text NOT NULL); INSERT INTO mtx_portable_backup_probe VALUES (1, 'isolated-container-check');"
+          compose restart postgres redis api
+          compose up -d --wait api
+          test "$(compose exec -T postgres psql -U mtx -d mtx -Atqc 'SELECT count(*) FROM mtx_portable_backup_probe')" = 1
+          compose exec -T postgres pg_dump -U mtx -d mtx -Fc > "$RUNNER_TEMP/mtx-portable-ci.backup"
+          compose exec -T postgres createdb -U postgres -O mtx mtx_restore_ci
+          compose exec -T postgres pg_restore --single-transaction --exit-on-error --no-owner --no-privileges -U mtx -d mtx_restore_ci < "$RUNNER_TEMP/mtx-portable-ci.backup"
+          test "$(compose exec -T postgres psql -U mtx -d mtx_restore_ci -Atqc 'SELECT count(*) FROM mtx_portable_backup_probe')" = 1
+      - name: Remove only this disposable CI stack
+        if: always()
+        run: |
+          if test -f deploy/.env; then
+            docker compose --project-name mtx-portable-ci --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.self-hosted.yaml down --volumes --remove-orphans
+          fi
+      - name: Report isolated success after cleanup
+        run: echo MTX_PORTABLE_CONTAINER_PASS_AND_CLEAN

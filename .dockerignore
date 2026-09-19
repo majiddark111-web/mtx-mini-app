@@ -7,6 +7,7 @@
 !eslint.config.js
 !src/**
 !server/**
+!economy/**
 !public/**
 !deploy/**
 deploy/.env*

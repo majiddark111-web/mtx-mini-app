@@ -1,6 +1,7 @@
 FROM node:22-bookworm-slim AS dependencies
 WORKDIR /app
-RUN npm install --global pnpm@10.28.2
+ENV CI=true
+RUN npm install --global pnpm@10.34.5
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
@@ -8,6 +9,7 @@ FROM dependencies AS web-build
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
 COPY public ./public
+COPY economy ./economy
 COPY server/deployment ./server/deployment
 ARG MTX_DOMAIN
 ARG MTX_BOT_USERNAME=TOKXTAPBOT
@@ -23,6 +25,7 @@ ENV NODE_ENV=production
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY package.json ./
 COPY server ./server
+COPY economy ./economy
 USER node
 EXPOSE 3000
 CMD ["node", "--experimental-strip-types", "server/deployment/start.mjs", "serve"]

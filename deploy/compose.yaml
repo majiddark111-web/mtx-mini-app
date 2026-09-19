@@ -10,6 +10,7 @@ x-api: &api
     MTX_BOT_USERNAME: ${MTX_BOT_USERNAME:-TOKXTAPBOT}
   secrets:
     - api_config
+  user: "${MTX_UID:-1000}:${MTX_GID:-1000}"
   networks: [backend]
   read_only: true
   tmpfs: [/tmp]
