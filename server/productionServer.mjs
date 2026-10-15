@@ -17,7 +17,11 @@ const infrastructure = await createNodeInfrastructure(process.env);
 const telegramBotToken = required('TELEGRAM_BOT_TOKEN');
 const telegramBotUsername = required('TELEGRAM_BOT_USERNAME');
 try {
-  const telegramBot = await verifyTelegramBotIdentity(telegramBotToken, telegramBotUsername);
+  const telegramBot = await verifyTelegramBotIdentity(telegramBotToken, telegramBotUsername, globalThis.fetch, {
+    onRetry: ({ nextAttempt, maximumAttempts, delayMs, reason }) => {
+      process.stderr.write(`Telegram bot identity retry ${nextAttempt}/${maximumAttempts}: ${reason}; waiting ${delayMs}ms\n`);
+    },
+  });
   process.stdout.write(`Telegram bot identity verified: @${telegramBot.username} (id ${telegramBot.id})\n`);
 } catch (error) {
   process.stderr.write(`Telegram bot identity diagnostic failed: ${error instanceof Error ? error.message : 'unknown error'}\n`);
