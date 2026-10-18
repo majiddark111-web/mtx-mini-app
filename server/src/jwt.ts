@@ -1,14 +1,17 @@
 import { asArrayBuffer, constantTimeEqual, decodeUtf8, fromBase64Url, toBase64Url, utf8 } from './encoding.ts';
 import type { AuthenticatedUser, SessionClaims } from './types.ts';
 
+export const PLAYER_TOKEN_SECONDS = 900;
+export const PLAYER_SESSION_SECONDS = 8 * 60 * 60;
+
 async function sign(value: string, secret: string): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey('raw', asArrayBuffer(utf8(secret)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return new Uint8Array(await crypto.subtle.sign('HMAC', key, asArrayBuffer(utf8(value))));
 }
 
-export async function issueJwt(user: AuthenticatedUser, secret: string, lifetimeSeconds = 900, nowSeconds = Math.floor(Date.now() / 1_000)): Promise<string> {
+export async function issueJwt(user: AuthenticatedUser, secret: string, lifetimeSeconds = PLAYER_TOKEN_SECONDS, nowSeconds = Math.floor(Date.now() / 1_000), sessionStartedAt = nowSeconds): Promise<string> {
   const header = toBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = toBase64Url(JSON.stringify({ sub: user.id, user, iat: nowSeconds, exp: nowSeconds + lifetimeSeconds } satisfies SessionClaims));
+  const payload = toBase64Url(JSON.stringify({ sub: user.id, user, iat: nowSeconds, exp: Math.min(nowSeconds + lifetimeSeconds, sessionStartedAt + PLAYER_SESSION_SECONDS), sessionStartedAt } satisfies SessionClaims));
   const unsigned = `${header}.${payload}`;
   return `${unsigned}.${toBase64Url(await sign(unsigned, secret))}`;
 }
@@ -21,5 +24,7 @@ export async function verifyJwt(token: string, secret: string, nowSeconds = Math
   if (!constantTimeEqual(fromBase64Url(signature), await sign(`${header}.${payload}`, secret))) throw new Error('Invalid token');
   const claims = JSON.parse(decodeUtf8(fromBase64Url(payload))) as Partial<SessionClaims>;
   if (typeof claims.sub !== 'string' || typeof claims.iat !== 'number' || typeof claims.exp !== 'number' || claims.exp <= nowSeconds || !claims.user || claims.user.id !== claims.sub) throw new Error('Expired or invalid token');
+  const startedAt = claims.sessionStartedAt ?? claims.iat;
+  if (!Number.isSafeInteger(startedAt) || startedAt > claims.iat || startedAt + PLAYER_SESSION_SECONDS <= nowSeconds) throw new Error('Expired or invalid session');
   return claims as SessionClaims;
 }

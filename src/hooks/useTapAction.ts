@@ -6,6 +6,7 @@ import { playTapSound } from '../services/preferencesService';
 import { acknowledgeTapBatch, appendTap, nextTapBatch, pendingTapCount, sealActiveBatch, tapBatchDuration } from '../services/tapOutboxService';
 import { runTapSync } from '../services/tapSyncCoordinator';
 import { useAppStore } from '../store/useAppStore';
+import { hasUsablePlayerSession } from '../api/httpClient';
 
 const SYNC_INTERVAL_MS = 2_000;
 export function useTapAction(): () => void {
@@ -16,7 +17,7 @@ export function useTapAction(): () => void {
   const syncing = useRef(false);
 
   const flush = useCallback(async () => {
-    if (authStatus !== 'authenticated' || !userId || syncing.current) return;
+    if (useAppStore.getState().authStatus !== 'authenticated' || !userId || syncing.current) return;
     sealActiveBatch(localStorage, userId);
     const batch = nextTapBatch(localStorage, userId);
     if (!batch) return;
@@ -39,9 +40,11 @@ export function useTapAction(): () => void {
   }, [flush, userId]);
 
   return useCallback(() => {
+    const status = useAppStore.getState().authStatus;
+    if (status !== 'demo' && (status !== 'authenticated' || !hasUsablePlayerSession())) return;
     hapticTap();
     playTapSound();
-    if (authStatus === 'authenticated') {
+    if (status === 'authenticated') {
       if (!userId) return;
       const batch = appendTap(localStorage, userId);
       tap();

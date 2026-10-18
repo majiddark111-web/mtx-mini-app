@@ -1,4 +1,4 @@
-import { issueJwt, verifyJwt } from './jwt.ts';
+import { issueJwt, verifyJwt, PLAYER_TOKEN_SECONDS } from './jwt.ts';
 import { GameStorage } from './gameStorage.ts';
 import { RateLimiter, type RequestRateLimiter } from './rateLimiter.ts';
 import { authRequestSchema, emptyBodySchema, emptyQuerySchema, tapBatchSchema, ValidationError } from './schema.ts';
@@ -129,9 +129,23 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       try { user = await validateTelegramInitData(body.initData, env.TELEGRAM_BOT_TOKEN, maximumAge); }
       catch (error) { env.AUTH_LOG?.(error instanceof Error ? error.message : 'Telegram authentication failed'); return json({ error: 'Unauthorized' }, 401, cors); }
       const nowSeconds = Math.floor(Date.now() / 1_000);
-      const token = await issueJwt(user, env.JWT_SECRET, 900, nowSeconds);
+      const token = await issueJwt(user, env.JWT_SECRET, PLAYER_TOKEN_SECONDS, nowSeconds);
       const sessionKey = await deriveSessionKey({ sub: user.id, iat: nowSeconds }, env.JWT_SECRET);
       return json({ token, sessionKey, user }, 200, cors);
+    }
+    if (url.pathname === '/api/session/refresh' && request.method === 'POST') {
+      // The common guard above already enforces the ban, signature and replay checks.
+      const authorization = request.headers.get('authorization');
+      if (!authorization?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401, cors);
+      let claims;
+      try { claims = await verifyJwt(authorization.slice(7), env.JWT_SECRET); }
+      catch { return json({ error: 'Unauthorized' }, 401, cors); }
+      emptyBodySchema.parse(await request.json());
+      if (!await playerRateLimiter.consume(`user:${claims.sub}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const nowSeconds = Math.floor(Date.now() / 1_000);
+      const token = await issueJwt(claims.user, env.JWT_SECRET, PLAYER_TOKEN_SECONDS, nowSeconds, claims.sessionStartedAt ?? claims.iat);
+      const sessionKey = await deriveSessionKey({ sub: claims.sub, iat: nowSeconds }, env.JWT_SECRET);
+      return json({ token, sessionKey }, 200, { ...cors, 'cache-control': 'no-store' });
     }
     if (url.pathname === '/api/session' && request.method === 'GET') {
       emptyQuerySchema.parse(Object.fromEntries(url.searchParams));

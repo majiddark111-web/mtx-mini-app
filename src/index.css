@@ -212,3 +212,5 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .admin-panel input, .admin-panel textarea { max-width: 100%; }
 .deferred-card { contain-intrinsic-size: 220px; content-visibility: auto; }.load-more { display: block; margin: 18px auto; }
 @keyframes skeleton { from { opacity: .45; } to { opacity: .9; } }
+.player-session-notice { position: fixed; inset: max(12px, env(safe-area-inset-top)) 12px auto; z-index: 1000; padding: 16px; border: 1px solid #f2bd40; border-radius: 12px; color: #fff; background: #302512; box-shadow: 0 4px 20px #0005; }
+.player-session-notice p { margin: 8px 0 0; line-height: 1.6; }

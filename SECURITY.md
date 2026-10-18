@@ -17,3 +17,7 @@ This bounds aggregate tap income, but does not prove human input or stop automat
 Production requirements include HTTPS, separate player/admin secrets, a real Telegram bot token, shared Redis, PostgreSQL, server-side payment verification, centralized anomaly/audit retention and secret-manager injection. Rotate a secret immediately if it appears in logs, source control or a `VITE_` variable. Security events are flagged for review; the system deliberately avoids automatic banning on a first anomaly.
 
 Report vulnerabilities privately to the project owner. Do not include bot tokens, JWTs, payment identifiers or personal Telegram data in a report.
+
+## Player-session lifecycle
+
+Player tokens remain short-lived and may be renewed by signed requests only while valid, up to a fixed eight-hour session limit. Expired sessions require a fresh Telegram launch; pending tap batches are preserved. See [renewal policy, tradeoffs and rollout](docs/PLAYER_SESSION_LIFECYCLE.md).

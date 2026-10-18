@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand';
 
 export interface UserSlice {
   user: { id: string; username: string; avatar: string; isAdmin: boolean };
-  authStatus: 'demo' | 'loading' | 'authenticated' | 'error';
+  authStatus: 'demo' | 'loading' | 'authenticated' | 'error' | 'expired';
   adminAuthenticated: boolean;
   setUser: (user: Partial<UserSlice['user']>) => void;
   setAuthStatus: (status: UserSlice['authStatus']) => void;

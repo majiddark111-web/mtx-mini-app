@@ -34,4 +34,5 @@ export interface SessionClaims {
   user: AuthenticatedUser;
   iat: number;
   exp: number;
+  sessionStartedAt?: number;
 }

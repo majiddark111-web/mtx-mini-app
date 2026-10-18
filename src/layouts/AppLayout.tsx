@@ -8,10 +8,11 @@ import { BottomNavigation } from '../components/navigation/BottomNavigation';
 import { useEffect } from 'react';
 import { initializePreferences } from '../services/preferencesService';
 import { NotificationBell } from '../components/notifications/NotificationBell';
+import { PlayerSessionNotice } from '../components/auth/PlayerSessionNotice';
 
 export function AppLayout() {
   useEffect(() => initializePreferences(), []);
   useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync(); useInventorySync();
   const location = useLocation();
-  return <div className="app-shell"><Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <><NotificationBell /><BottomNavigation /></>}</div>;
+  return <div className="app-shell">{!location.pathname.startsWith('/admin') && <PlayerSessionNotice />}<Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <><NotificationBell /><BottomNavigation /></>}</div>;
 }
