@@ -6,6 +6,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { BoostModal } from './BoostModal';
 import { EarnModal } from './EarnModal';
 import { useI18n } from '../../hooks/useI18n';
+import { PlayerDiagnostics } from './PlayerDiagnostics';
 
 export function GameScreen() {
   const { text, number } = useI18n();
@@ -27,6 +28,7 @@ export function GameScreen() {
         <div className="energy-track"><div style={{ width: `${energyPercentage}%` }} /></div><span>{text('Energy', 'انرژی')}: {number(energy)} / {number(maxEnergy)}</span><span className="profit-rate">📈 {number(profitPerHour)} MTX / {text('hour', 'ساعت')}</span>
       </div>
       <div className="game-actions"><button type="button" onClick={() => setModal('boost')}>⚡<span>{text('Boost', 'بوست')}</span></button><button type="button" onClick={() => setModal('earn')}>🎯<span>{text('Earn', 'درآمد')}</span></button></div>
+      <PlayerDiagnostics />
     </section>
     {modal === 'boost' && <BoostModal onClose={() => setModal(null)} />}{modal === 'earn' && <EarnModal onClose={() => setModal(null)} />}
   </main>;

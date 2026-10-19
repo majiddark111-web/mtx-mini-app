@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { PlayerSessionController, SessionRejectedError, type SessionCredentials } from '../services/playerSession';
+import { gameDiagnostics, sessionDiagnostic } from '../services/playerDiagnostics';
 
 const baseURL = import.meta.env.VITE_API_BASE || '';
 export const httpClient = axios.create({ baseURL, timeout: 30_000 });
@@ -30,7 +31,9 @@ const session = new PlayerSessionController(async (credentials) => {
   }
 }, () => window.dispatchEvent(new Event(PLAYER_SESSION_EXPIRED)));
 
-export const setApiSession = (credentials: SessionCredentials): void => session.install(credentials);
+export const setApiSession = (credentials: SessionCredentials): void => { session.install(credentials); gameDiagnostics.reset(session.current()!.userId); };
+export const getApiSessionSubject = (): string => session.current()?.userId ?? '';
+export const getApiSessionDiagnostic = (now = Date.now()) => sessionDiagnostic(session.current(), now);
 export const getApiAuthToken = (): string => session.current()?.token ?? '';
 export const hasUsablePlayerSession = (): boolean => session.usable();
 export const maintainPlayerSession = async (): Promise<void> => { if (session.current()) await session.ensure(); };

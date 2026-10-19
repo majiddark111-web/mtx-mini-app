@@ -214,3 +214,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 @keyframes skeleton { from { opacity: .45; } to { opacity: .9; } }
 .player-session-notice { position: fixed; inset: max(12px, env(safe-area-inset-top)) 12px auto; z-index: 1000; padding: 16px; border: 1px solid #f2bd40; border-radius: 12px; color: #fff; background: #302512; box-shadow: 0 4px 20px #0005; }
 .player-session-notice p { margin: 8px 0 0; line-height: 1.6; }
+.game-content { overflow-y: auto; }
+.game-content > * { flex-shrink: 0; }
+.player-diagnostics { margin: 18px auto; width: min(100%, 540px); padding: 12px; border: 1px solid #8c824c; border-radius: 12px; background: #191b24; color: #f8f8fa; text-align: start; font-size: 13px; }
+.player-diagnostics summary { cursor: pointer; overflow-wrap: anywhere; }
+.player-diagnostics summary:focus-visible { outline: 3px solid #ffd83d; outline-offset: 4px; }
+.player-diagnostics dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 9px 12px; }
+.player-diagnostics dt { color: #c4c8d4; }
+.player-diagnostics dd { margin: 0; overflow-wrap: anywhere; }
+.player-diagnostics p { line-height: 1.7; color: #c4c8d4; }
