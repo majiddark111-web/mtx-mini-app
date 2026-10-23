@@ -6,7 +6,9 @@ import { playTapSound } from '../services/preferencesService';
 import { acknowledgeTapBatch, appendTap, nextTapBatch, pendingTapCount, sealActiveBatch, tapBatchDuration } from '../services/tapOutboxService';
 import { runTapSync } from '../services/tapSyncCoordinator';
 import { useAppStore } from '../store/useAppStore';
-import { hasUsablePlayerSession } from '../api/httpClient';
+import { getApiSessionDiagnostic, hasUsablePlayerSession } from '../api/httpClient';
+import { attemptPlayerTap } from '../services/playerTapAction';
+import { gameDiagnostics } from '../services/playerDiagnostics';
 
 const SYNC_INTERVAL_MS = 2_000;
 export function useTapAction(): () => void {
@@ -40,17 +42,18 @@ export function useTapAction(): () => void {
   }, [flush, userId]);
 
   return useCallback(() => {
-    const status = useAppStore.getState().authStatus;
-    if (status !== 'demo' && (status !== 'authenticated' || !hasUsablePlayerSession())) return;
+    const current = useAppStore.getState();
+    const attemptedAt = Date.now();
+    const credential = getApiSessionDiagnostic(attemptedAt).status;
+    const result = attemptPlayerTap(current.authStatus, current.user.id, {
+      hasUsableSession: hasUsablePlayerSession,
+      queueTap: (account) => appendTap(localStorage, account),
+      applyTap: tap,
+    });
+    gameDiagnostics.recordLocalTap(current.user.id, result.accepted, current.authStatus, credential, attemptedAt);
+    if (!result.accepted) return;
     hapticTap();
     playTapSound();
-    if (status === 'authenticated') {
-      if (!userId) return;
-      const batch = appendTap(localStorage, userId);
-      tap();
-      if (batch.sealed) void flush();
-      return;
-    }
-    tap();
+    if (result.sealed) void flush();
   }, [authStatus, flush, tap, userId]);
 }

@@ -103,8 +103,10 @@ describe('player-session lifecycle', () => {
       setItem(key: string, value: string) { this.values.set(key, value); }
     }
     const storage = new MemoryStorage(); let now = start * 1000;
-    appendTap(storage, '42', now, 'session-pending-batch-001'); sealActiveBatch(storage, '42', now + 1000);
+    appendTap(storage, '42', now, '11111111-1111-4111-8111-111111111111'); sealActiveBatch(storage, '42', now + 1000);
     const before = nextTapBatch(storage, '42');
+    assert.ok(before, 'the fixture must contain an actual pending batch');
+    assert.equal(before.taps, 1);
     const session = new PlayerSessionController(async () => { throw new Error('offline'); }, () => sealActiveBatch(storage, '42'), () => now);
     session.install(credentials()); now += 901_000;
     await assert.rejects(session.ensure(), SessionExpiredError);

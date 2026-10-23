@@ -40,3 +40,17 @@ The full suite, type checking and isolated production build were also verified w
 7. Confirm shop, wallet, rewards and the separate admin login still work. Do not initiate a real-money transaction to test renewal.
 
 These deployment/phone checks are pending. The local implementation is not evidence that the currently deployed service has changed.
+
+## Offline regression follow-up (2026-10-23)
+
+The owner reports that new taps still increased the displayed score after the countdown reached zero on the phone. No screenshot of that moment is available. Treat the phone acceptance check as **failed/unresolved**, not passed by the local tests below.
+
+- Corrected a false-positive test fixture: its non-UUID batch ID was discarded by outbox validation. The test now uses a valid UUID and asserts the batch exists before comparing it across expiry/login. Adding the existence assertion first reproduced the old test's failure.
+- Extracted the existing per-tap credential gate and queue-before-score operation into `attemptPlayerTap`, shared by the actual React hook and eight new regression tests. This does not change the policy: authenticated offline taps are permitted only while credentials remain valid; explicit demo taps are separate.
+- Tested the exact expiry boundary, background suspension, failed renewal, retained batch identity, account isolation, new login, blocked authentication states, storage failure and full batches. Server acceptance/deduplication is not proven by the simulated client acknowledgement.
+- Diagnostic version `diag-20261023-1` records the last local tap's time, allow/block result, pre-attempt authentication status and credential status. These observations are memory-only, account-scoped and distinct from server confirmation. Three additional tests cover isolation and local/server separation. No credentials are displayed or sent.
+- Direct retrieval of the live static site failed with a connection timeout on this machine; the browser fetch tool also could not access it. An outdated deployed/cached version is a hypothesis, not a diagnosis.
+
+No backend, expiry interval, secret, database, environment variable or hosting plan was changed. This patch is not deployed. After frontend deployment, verify the diagnostic version, then repeat the offline expiry test and capture the new local-tap rows **before reconnecting or reopening**. Do not clear browser/app storage.
+
+Verification on Node 22.23.3: **223 tests across 19 suites passed, zero failures/skips**; frontend/server TypeScript checks, ESLint with zero warnings, and the isolated Vite production build passed. The React/browser/Telegram rendering and physical phone acceptance checks were not executed in this follow-up.

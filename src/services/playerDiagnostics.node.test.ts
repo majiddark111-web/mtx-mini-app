@@ -37,6 +37,36 @@ describe('read-only player diagnostics', () => {
     assert.equal(tracker.snapshot('a').serverCoins, null);
     assert.equal(tracker.snapshot('a').lastResponseAt, null);
   });
+  it('records an expired blocked tap without claiming server activity', () => {
+    const tracker = new GameDiagnostics(); tracker.reset('a');
+    tracker.recordLocalTap('a', false, 'authenticated', 'expired', 900_000);
+    const value = tracker.snapshot('a');
+    assert.equal(value.lastLocalTapAt, 900_000);
+    assert.equal(value.lastLocalTapAccepted, false);
+    assert.equal(value.lastLocalTapAuth, 'authenticated');
+    assert.equal(value.lastLocalTapCredential, 'expired');
+    assert.equal(value.lastResponseAt, null);
+    assert.equal(value.lastAcceptedTapAt, null);
+    assert.equal(value.serverCoins, null);
+  });
+  it('records local acceptance separately from authoritative acceptance', () => {
+    const tracker = new GameDiagnostics(); tracker.reset('a');
+    tracker.recordLocalTap('a', true, 'authenticated', 'valid', 100);
+    assert.equal(tracker.snapshot('a').lastLocalTapAccepted, true);
+    assert.equal(tracker.snapshot('a').lastAcceptedTapAt, null);
+    tracker.record('a', state, 'tap-accepted', 200);
+    assert.equal(tracker.snapshot('a').lastAcceptedTapAt, 200);
+    assert.equal(tracker.snapshot('a').lastLocalTapAt, 100);
+  });
+  it('resets local tap observations and ignores another account or invalid time', () => {
+    const tracker = new GameDiagnostics(); tracker.reset('a');
+    tracker.recordLocalTap('a', true, 'authenticated', 'valid', 1);
+    tracker.reset('b');
+    tracker.recordLocalTap('a', false, 'expired', 'missing', 2);
+    tracker.recordLocalTap('b', true, 'authenticated', 'valid', NaN);
+    assert.equal(tracker.snapshot('b').lastLocalTapAt, null);
+    assert.equal(tracker.snapshot('a').lastLocalTapAccepted, null);
+  });
   it('resets on login and ignores responses from another account', () => {
     const tracker = new GameDiagnostics(); tracker.reset('a'); tracker.record('a', state, 'read', 1);
     tracker.reset('b'); tracker.record('a', state, 'tap-accepted', 2);

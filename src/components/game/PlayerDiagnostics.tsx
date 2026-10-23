@@ -45,6 +45,10 @@ function DiagnosticReadout() {
       <dt>{text('Browser network indicator', 'نشانگر شبکهٔ مرورگر')}</dt><dd>{navigator.onLine ? text('Online (not proof of server access)', 'متصل (تضمین دسترسی به سرور نیست)') : text('Offline', 'قطع')}</dd>
       <dt>{text('Pending taps', 'تپ‌های منتظر ارسال')}</dt><dd>{pending === null ? '—' : number(pending)}</dd>
       <dt>{text('Displayed power per tap', 'قدرت هر تپ در برنامه')}</dt><dd>{number(tapPower)}</dd>
+      <dt>{text('Last local tap attempt', 'آخرین تلاش برای تپ روی دستگاه')}</dt><dd>{time(game.lastLocalTapAt)}</dd>
+      <dt>{text('Local tap result (not server confirmation)', 'نتیجهٔ محلی تپ (نه تأیید سرور)')}</dt><dd>{game.lastLocalTapAccepted === null ? unknown : game.lastLocalTapAccepted ? text('Allowed locally', 'مجاز روی دستگاه') : text('Blocked locally', 'مسدود روی دستگاه')}</dd>
+      <dt>{text('Sign-in status at that tap', 'وضعیت ورود هنگام همان تپ')}</dt><dd>{game.lastLocalTapAuth === null ? unknown : authLabels[game.lastLocalTapAuth]}</dd>
+      <dt>{text('Credential at that tap', 'اعتبار هنگام همان تپ')}</dt><dd>{game.lastLocalTapCredential === null ? unknown : game.lastLocalTapCredential === 'valid' ? text('Valid by device clock', 'معتبر طبق ساعت دستگاه') : game.lastLocalTapCredential === 'expired' ? text('Expired', 'منقضی‌شده') : text('No credential in memory', 'اعتبار ورود در حافظه وجود ندارد')}</dd>
       <dt>{text('Last server game response', 'آخرین پاسخ وضعیت بازی از سرور')}</dt><dd>{time(game.lastResponseAt)}</dd>
       <dt>{text('Last accepted tap batch', 'آخرین تأیید بستهٔ تپ')}</dt><dd>{time(game.lastAcceptedTapAt)}</dd>
       <dt>{text('Last rejected tap batch', 'آخرین رد بستهٔ تپ')}</dt><dd>{time(game.lastRejectedTapAt)}</dd>
