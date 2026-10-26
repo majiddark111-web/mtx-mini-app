@@ -78,13 +78,14 @@ export const paymentConfirmationSchema: Schema<{ provider: 'ton' | 'usdt'; trans
   },
 };
 
-export const paymentIntentSchema: Schema<{ sourceAddress: string }> = {
+export const paymentIntentSchema: Schema<{ sourceAddress: string; idempotencyKey?: string }> = {
   parse(value) {
     if (!value || typeof value !== 'object') throw new ValidationError('Body must be an object');
     const body = value as Record<string, unknown>;
-    if (Object.keys(body).some((key) => key !== 'sourceAddress') || typeof body.sourceAddress !== 'string' || body.sourceAddress.length < 48 || body.sourceAddress.length > 80) throw new ValidationError('Invalid wallet address');
+    if (Object.keys(body).some((key) => key !== 'sourceAddress' && key !== 'idempotencyKey') || typeof body.sourceAddress !== 'string' || body.sourceAddress.length < 48 || body.sourceAddress.length > 80) throw new ValidationError('Invalid wallet address');
+    if (body.idempotencyKey !== undefined && (typeof body.idempotencyKey !== 'string' || !/^[a-zA-Z0-9_-]{12,128}$/.test(body.idempotencyKey))) throw new ValidationError('Invalid idempotency key');
     try { Address.parse(body.sourceAddress); } catch { throw new ValidationError('Invalid wallet address'); }
-    return { sourceAddress: body.sourceAddress };
+    return { sourceAddress: Address.parse(body.sourceAddress).toRawString(), idempotencyKey: body.idempotencyKey as string | undefined };
   },
 };
 

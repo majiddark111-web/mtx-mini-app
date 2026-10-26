@@ -1,4 +1,4 @@
-import type { CommercePersistence, InventoryEntry, PaymentRecord, PurchaseRecord } from './commerce.ts';
+import type { CommercePersistence, InventoryEntry, PaymentRecord, PaymentIntent, PurchaseRecord } from './commerce.ts';
 import type { PostgresQueries } from './productionStorage.ts';
 import type { ServerGameState } from './gameEngine.ts';
 
@@ -7,6 +7,8 @@ interface PurchaseRow { id: string; user_id: string; item_id: string; price: str
 interface PaymentRow { transaction_id: string; user_id: string; provider: PaymentRecord['provider']; asset: PaymentRecord['asset']; amount: string | number; credited_coins: string | number; status: PaymentRecord['status']; created_at: string | Date; }
 
 const time = (value: string | Date): number => new Date(value).getTime();
+interface IntentRow { transaction_id: string; user_id: string; idempotency_key: string; source_address: string; recipient: string; amount_nano: string | number; credited_coins: string | number; created_at: string | Date; expires_at: string | Date; }
+const intentRecord = (row: IntentRow): PaymentIntent => ({ transactionId: row.transaction_id, userId: row.user_id, idempotencyKey: row.idempotency_key, sourceAddress: row.source_address, recipient: row.recipient, amountNano: Number(row.amount_nano), creditedCoins: Number(row.credited_coins), createdAt: time(row.created_at), expiresAt: time(row.expires_at) });
 const purchaseRecord = (row: PurchaseRow): PurchaseRecord => ({ id: row.id, userId: row.user_id, itemId: row.item_id, price: Number(row.price), idempotencyKey: row.idempotency_key, createdAt: time(row.created_at) });
 const paymentRecord = (row: PaymentRow): PaymentRecord => ({ transactionId: row.transaction_id, userId: row.user_id, provider: row.provider, asset: row.asset, amount: Number(row.amount), creditedCoins: Number(row.credited_coins), status: row.status, createdAt: time(row.created_at) });
 
@@ -14,6 +16,19 @@ export class PostgresCommercePersistence implements CommercePersistence {
   readonly persistsGameState = true;
   private readonly database: PostgresQueries;
   constructor(database: PostgresQueries) { this.database = database; }
+
+  async savePaymentIntent(intent: PaymentIntent): Promise<PaymentIntent> {
+    const result = await this.database.query<IntentRow>('INSERT INTO mtx_payment_intents (transaction_id, user_id, idempotency_key, source_address, recipient, amount_nano, credited_coins, created_at, expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (user_id, idempotency_key) DO UPDATE SET idempotency_key = mtx_payment_intents.idempotency_key RETURNING *', [intent.transactionId, intent.userId, intent.idempotencyKey, intent.sourceAddress, intent.recipient, intent.amountNano, intent.creditedCoins, new Date(intent.createdAt).toISOString(), new Date(intent.expiresAt).toISOString()]);
+    return intentRecord(result.rows[0]);
+  }
+  async paymentIntent(transactionId: string): Promise<PaymentIntent | undefined> {
+    const result = await this.database.query<IntentRow>('SELECT * FROM mtx_payment_intents WHERE transaction_id = $1', [transactionId]);
+    return result.rows[0] && intentRecord(result.rows[0]);
+  }
+  async pendingPaymentIntents(userId: string): Promise<PaymentIntent[]> {
+    const result = await this.database.query<IntentRow>('SELECT i.* FROM mtx_payment_intents i WHERE i.user_id = $1 AND NOT EXISTS (SELECT 1 FROM mtx_payments p WHERE p.transaction_id = i.transaction_id) ORDER BY i.created_at DESC LIMIT 101', [userId]);
+    return result.rows.map(intentRecord);
+  }
 
   async inventory(userId: string): Promise<InventoryEntry[]> {
     const result = await this.database.query<InventoryRow>('SELECT item_id, category, quantity, acquired_at FROM mtx_inventory WHERE user_id = $1 ORDER BY acquired_at DESC', [userId]);
@@ -82,6 +97,8 @@ export class PostgresCommercePersistence implements CommercePersistence {
 
   async commitPayment(record: PaymentRecord, previousVersion: number, state: ServerGameState): Promise<{ record: PaymentRecord; duplicate: boolean }> {
     return this.inTransaction(async (database) => {
+      // Serialize duplicate confirmations even before the payment row exists.
+      await database.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`mtx:payment:${record.transactionId}`]);
       const existing = await this.paymentWith(database, record.transactionId);
       if (existing) return { record: existing, duplicate: true };
       await this.lockAndSaveState(database, state, previousVersion);

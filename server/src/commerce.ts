@@ -8,10 +8,14 @@ export interface CatalogItem { id: string; category: CatalogCategory; title: str
 export interface InventoryEntry { itemId: string; category: CatalogCategory; quantity: number; acquiredAt: number; }
 export interface PurchaseRecord { id: string; userId: string; itemId: string; price: number; createdAt: number; idempotencyKey: string; }
 export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'refunded';
+export interface PaymentIntent { transactionId: string; userId: string; idempotencyKey: string; sourceAddress: string; recipient: string; amountNano: number; creditedCoins: number; createdAt: number; expiresAt: number; }
 export interface PaymentRecord { transactionId: string; userId: string; provider: 'ton' | 'usdt'; asset: 'TON' | 'USDT'; amount: number; creditedCoins: number; status: PaymentStatus; createdAt: number; }
 
 export interface CommercePersistence {
   readonly persistsGameState: boolean;
+  savePaymentIntent(intent: PaymentIntent): Promise<PaymentIntent>;
+  paymentIntent(transactionId: string): Promise<PaymentIntent | undefined>;
+  pendingPaymentIntents(userId: string): Promise<PaymentIntent[]>;
   inventory(userId: string): Promise<InventoryEntry[]>;
   purchaseHistory(userId: string): Promise<PurchaseRecord[]>;
   paymentHistory(userId: string): Promise<PaymentRecord[]>;
@@ -30,6 +34,15 @@ export class MemoryCommercePersistence implements CommercePersistence {
   private inventories = new Map<string, InventoryEntry[]>();
   private purchases = new Map<string, PurchaseRecord>();
   private payments = new Map<string, PaymentRecord>();
+  private intents = new Map<string, PaymentIntent>();
+  async savePaymentIntent(intent: PaymentIntent): Promise<PaymentIntent> {
+    const existing = [...this.intents.values()].find((item) => item.userId === intent.userId && item.idempotencyKey === intent.idempotencyKey);
+    if (existing) return structuredClone(existing);
+    if (this.intents.has(intent.transactionId)) throw new Error('PAYMENT_INTENT_CONFLICT');
+    this.intents.set(intent.transactionId, structuredClone(intent)); return structuredClone(intent);
+  }
+  async paymentIntent(transactionId: string): Promise<PaymentIntent | undefined> { const intent = this.intents.get(transactionId); return intent && structuredClone(intent); }
+  async pendingPaymentIntents(userId: string): Promise<PaymentIntent[]> { return structuredClone([...this.intents.values()].filter((item) => item.userId === userId && !this.payments.has(item.transactionId)).sort((a, b) => b.createdAt - a.createdAt).slice(0, 101)); }
   private equippedSkins = new Map<string, 'skin:aurora'>();
   async inventory(userId: string): Promise<InventoryEntry[]> { return structuredClone(this.inventories.get(userId) ?? []); }
   async purchaseHistory(userId: string): Promise<PurchaseRecord[]> { return structuredClone([...this.purchases.values()].filter((record) => record.userId === userId)); }
@@ -63,6 +76,9 @@ export function catalogFor(state: ServerGameState, economy: EconomyConfig, inven
 export class CommerceStorage {
   private readonly persistence: CommercePersistence;
   constructor(persistence: CommercePersistence = new MemoryCommercePersistence()) { this.persistence = persistence; }
+  savePaymentIntent(intent: PaymentIntent): Promise<PaymentIntent> { return this.persistence.savePaymentIntent(intent); }
+  paymentIntent(transactionId: string): Promise<PaymentIntent | undefined> { return this.persistence.paymentIntent(transactionId); }
+  pendingPaymentIntents(userId: string): Promise<PaymentIntent[]> { return this.persistence.pendingPaymentIntents(userId); }
   inventory(userId: string): Promise<InventoryEntry[]> { return this.persistence.inventory(userId); }
   purchaseHistory(userId: string): Promise<PurchaseRecord[]> { return this.persistence.purchaseHistory(userId); }
   paymentHistory(userId: string): Promise<PaymentRecord[]> { return this.persistence.paymentHistory(userId); }

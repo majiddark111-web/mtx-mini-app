@@ -22,4 +22,18 @@ describe('TON Testnet payment verification', () => {
     const verifier = createTonPaymentVerifier({ apiKey: 'secret', baseUrl: 'https://testnet.toncenter.com', treasuryAddress: treasury, amountNano: 10_000_000, creditedCoins: 100, fetchImplementation: async () => new Response(JSON.stringify({ messages: [] })) });
     assert.deepEqual(await verifier.verify({ sourceAddress: source, transactionId: order, createdAt: Date.now() }), { verified: false, creditedCoins: 0, status: 'pending' });
   });
+  it('verifies the persisted quote instead of changed deployment defaults', async () => {
+    const verifier = createTonPaymentVerifier({ apiKey: 'test', baseUrl: 'https://testnet.toncenter.com', treasuryAddress: source, amountNano: 1, creditedCoins: 999, fetchImplementation: async (url) => {
+      assert.equal(url.searchParams.get('destination'), treasury);
+      return new Response(JSON.stringify({ messages: [{ source, destination: treasury, value: '10000000', bounced: false, message_content: { body: commentBody } }] }));
+    } });
+    assert.deepEqual(await verifier.verify({ sourceAddress: source, transactionId: order, createdAt: Date.now() - 86_400_000, recipient: treasury, amountNano: 10_000_000, creditedCoins: 100 }), { verified: true, creditedCoins: 100, status: 'confirmed' });
+  });
+  it('does not confirm bounced, wrong-amount, wrong-order or wrong-address messages', async () => {
+    const message = { source, destination: treasury, value: '10000000', bounced: false, message_content: { body: commentBody } };
+    for (const change of [{ bounced: true }, { value: '1' }, { source: treasury }, { destination: source }, { message_content: { body: '' } }]) {
+      const verifier = createTonPaymentVerifier({ apiKey: 'test', baseUrl: 'https://testnet.toncenter.com', treasuryAddress: treasury, amountNano: 10_000_000, creditedCoins: 100, fetchImplementation: async () => new Response(JSON.stringify({ messages: [{ ...message, ...change }] })) });
+      assert.equal((await verifier.verify({ sourceAddress: source, transactionId: order, createdAt: Date.now() })).verified, false);
+    }
+  });
 });

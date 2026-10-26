@@ -17,9 +17,13 @@ export function createTonPaymentVerifier({ apiKey, baseUrl, treasuryAddress, amo
   Address.parse(treasuryAddress);
   return {
     async verify(input) {
+      // An old order keeps its original quote even after configuration changes.
+      const recipient = input.recipient ?? treasuryAddress;
+      const expectedAmount = input.amountNano ?? amountNano;
+      const reward = input.creditedCoins ?? creditedCoins;
       const url = new URL('/api/v3/messages', baseUrl);
       url.searchParams.set('source', input.sourceAddress);
-      url.searchParams.set('destination', treasuryAddress);
+      url.searchParams.set('destination', recipient);
       url.searchParams.set('start_utime', String(Math.floor(input.createdAt / 1_000) - 30));
       url.searchParams.set('limit', '100');
       url.searchParams.set('sort', 'desc');
@@ -28,11 +32,11 @@ export function createTonPaymentVerifier({ apiKey, baseUrl, treasuryAddress, amo
       const payload = await response.json();
       const messages = Array.isArray(payload?.messages) ? payload.messages : [];
       const match = messages.find((message) => sameAddress(message.source, input.sourceAddress)
-        && sameAddress(message.destination, treasuryAddress)
-        && String(message.value) === String(amountNano)
+        && sameAddress(message.destination, recipient)
+        && String(message.value) === String(expectedAmount)
         && message.bounced !== true
         && decodeTonComment(message.message_content?.body ?? '') === input.transactionId);
-      return match ? { verified: true, creditedCoins, status: 'confirmed' } : { verified: false, creditedCoins: 0, status: 'pending' };
+      return match ? { verified: true, creditedCoins: reward, status: 'confirmed' } : { verified: false, creditedCoins: 0, status: 'pending' };
     },
   };
 }
