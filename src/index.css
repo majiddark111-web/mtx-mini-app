@@ -155,6 +155,38 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset:
 .wallet-dot.connected { background: #4ee28b; box-shadow: 0 0 12px #4ee28b; }
 .transaction-row { align-items: center; border-bottom: 1px solid #292929; display: grid; gap: 8px; grid-template-columns: 1fr auto auto; padding: 10px 0; }
 .transaction-row small { color: #ffd21e; }
+.wallet-page .transaction-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+.wallet-page .transaction-row > * { min-width: 0; overflow-wrap: anywhere; }
+.payment-order { align-items: center; border-top: 1px solid #49432e; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); padding: 16px 0; }
+.payment-order-details { min-width: 0; }
+.payment-order-label { color: #bdbdbd; display: block; font-size: .78rem; margin-bottom: 6px; }
+.payment-order-id { color: #ffe078; display: block; font-size: .85rem; line-height: 1.6; overflow-wrap: anywhere; text-align: start; user-select: text; }
+.payment-order-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; line-height: 1.5; margin-top: 10px; }
+.payment-order-summary bdi { display: inline-block; }
+.payment-check-button { min-height: 44px; min-width: 0; overflow-wrap: anywhere; width: 100%; }
+.wallet-page .payment-order-help { border: 0; color: #bdbdbd; line-height: 1.6; overflow-wrap: anywhere; }
+.wallet-page .payment-check-button:focus-visible { outline-color: #ba8900; }
+.wallet-page .wallet-card > label { display: block; margin: 12px 0; text-align: start; }
+.wallet-page .wallet-card > small { display: block; margin-top: 12px; }
+:root[data-app-theme="light"] .wallet-page :is(.wallet-card p, .purchase-history > p) { color: #555; }
+:root[data-app-theme="light"] .wallet-page .button.ghost { color: #594600; border-color: #8c7736; }
+:root[data-app-theme="light"] .payment-order { border-color: #ddd4ae; }
+:root[data-app-theme="light"] .payment-order-id { color: #6b5100; }
+:root[data-app-theme="light"] :is(.payment-order-label, .wallet-page .payment-order-help) { color: #555; }
+@media (prefers-color-scheme: light) {
+  :root[data-app-theme="system"] .wallet-page :is(.wallet-card p, .purchase-history > p) { color: #555; }
+  :root[data-app-theme="system"] .wallet-page .button.ghost { color: #594600; border-color: #8c7736; }
+  :root[data-app-theme="system"] .payment-order { border-color: #ddd4ae; }
+  :root[data-app-theme="system"] .payment-order-id { color: #6b5100; }
+  :root[data-app-theme="system"] :is(.payment-order-label, .wallet-page .payment-order-help) { color: #555; }
+}
+@media (min-width: 600px) {
+  .payment-order { grid-template-columns: minmax(0, 1fr) minmax(140px, 180px); }
+}
+@media (max-width: 380px) {
+  .wallet-page .transaction-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .wallet-page .transaction-row small { grid-column: 1 / -1; }
+}
 .payment-confirmed { color: #4ee28b; }.payment-pending { color: #ffd21e; }.payment-failed { color: #ff7575; }.payment-refunded { color: #87b9ff; }
 .social-list { display: grid; gap: 12px; }
 .social-card, .daily-card, .referral-card, .profile-card { background: linear-gradient(145deg, rgba(255,210,30,.09), rgba(255,255,255,.03)); border: 1px solid #302c1b; border-radius: 22px; padding: 20px; }

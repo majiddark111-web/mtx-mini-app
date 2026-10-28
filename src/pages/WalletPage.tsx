@@ -89,7 +89,7 @@ function ConnectedWalletPage() {
     } finally { busy.current = false; if (mounted.current) setPaying(false); }
   };
 
-  return <main className="page commerce-page">
+  return <main className="page commerce-page wallet-page">
     <Link className="brand" to="/">MTX</Link>
     <header className="commerce-header"><div><h1>{text('Wallet', 'کیف پول')}</h1><p>{text('TON Testnet connection and payment status', 'اتصال شبکه آزمایشی TON و وضعیت پرداخت')}</p></div><span className={`wallet-dot ${testnetConnected ? 'connected' : ''}`} /></header>
     <section className="wallet-card">
@@ -105,7 +105,15 @@ function ConnectedWalletPage() {
       <small>{text('Only server-verified blockchain payments earn MTX. Orders remain recoverable after the sending deadline.', 'فقط پرداخت تأییدشدهٔ بلاکچین توسط سرور امتیاز می‌گیرد. پس از مهلت ارسال هم سفارش قابل پیگیری است.')}</small>
     </section>
     <section className="purchase-history"><h2>{text('Unresolved payment orders', 'سفارش‌های پرداخت حل‌نشده')}</h2>
-      {orders.map((intent) => <article className="transaction-row" key={intent.transactionId}><small dir="ltr">{intent.transactionId}</small><span>{number(intent.amountNano / 1_000_000_000)} TON · {number(intent.creditedCoins)} MTX</span><button className="button ghost" disabled={paying || authStatus !== 'authenticated'} onClick={() => void checkPending(intent)}>{text('Check payment (does not send TON)', 'بررسی پرداخت (بدون ارسال TON)')}</button></article>)}
+      {orders.length > 0 && <p className="payment-order-help" id="payment-check-help">{text('Check payment only verifies an existing order. It does not send TON or start a new purchase.', '«بررسی پرداخت» فقط وضعیت سفارش قبلی را بررسی می‌کند؛ TON ارسال نمی‌کند و خرید جدیدی نمی‌سازد.')}</p>}
+      {orders.map((intent) => <article className="payment-order" key={intent.transactionId}>
+        <div className="payment-order-details">
+          <span className="payment-order-label">{text('Order ID', 'شناسهٔ سفارش')}</span>
+          <code className="payment-order-id" dir="ltr">{intent.transactionId}</code>
+          <div className="payment-order-summary"><span><bdi>{number(intent.amountNano / 1_000_000_000)} TON</bdi></span><span><bdi>{number(intent.creditedCoins)} MTX</bdi></span></div>
+        </div>
+        <button className="button primary payment-check-button" aria-describedby="payment-check-help" disabled={paying || authStatus !== 'authenticated'} onClick={() => void checkPending(intent)}>{paying ? text('Please wait…', 'لطفاً صبر کنید…') : text('Check payment', 'بررسی پرداخت')}</button>
+      </article>)}
     </section>
     <section className="purchase-history"><h2>{text('Transactions', 'تراکنش‌ها')}</h2>{wallet.transactions.length === 0 ? <p>{text('No verified TON transactions.', 'تراکنش تأییدشده TON وجود ندارد.')}</p> : wallet.transactions.map((transaction) => <article className="transaction-row" key={transaction.transactionId}><span>{transaction.asset} · {number(transaction.amount)}</span><strong className={`payment-${transaction.status}`}>{transaction.status}</strong><small>+{number(transaction.creditedCoins)} MTX</small></article>)}</section>
   </main>;
