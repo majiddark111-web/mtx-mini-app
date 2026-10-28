@@ -58,7 +58,10 @@ export class SocialStorage {
   }
 
   async dailyStatus(userId: string, now: number): Promise<{ streak: number; reward: number; claimed: boolean }> {
-    const claim = this.persistence ? await this.persistence.daily(userId) : this.dailyClaims.get(userId); const claimed = claim?.day === dayKey(now); const streak = claim?.streak ?? 0;
+    const claim = this.persistence ? await this.persistence.daily(userId) : this.dailyClaims.get(userId);
+    const claimed = claim?.day === dayKey(now);
+    const continues = claimed || claim?.day === dayKey(now - 86_400_000);
+    const streak = continues ? claim?.streak ?? 0 : 0;
     return { streak, reward: 100 * Math.min(7, claimed ? streak : streak + 1), claimed };
   }
 

@@ -24,6 +24,17 @@ Object.assign(ar, { Global: 'العالمي', Friends: 'الأصدقاء', Weekl
 
 Object.assign(ar, { 'Ranked by current MTX balance': 'الترتيب حسب رصيد MTX الحالي', 'Ranked by gameplay earnings in this UTC period; purchases and rewards excluded.': 'الترتيب حسب أرباح اللعب خلال هذه الفترة بتوقيت UTC؛ دون المشتريات والمكافآت.' });
 
+Object.assign(ar, {
+  'Reopen MTX in Telegram to sign in before claiming rewards.': 'أعد فتح MTX في تيليجرام لتسجيل الدخول قبل استلام المكافآت.',
+  'Loading reward status…': 'جارٍ تحميل حالة المكافآت…',
+  'The answer is incorrect. Check it and try again.': 'الإجابة غير صحيحة. تحقّق منها وحاول مجددًا.',
+  'Reward status could not load. Check your connection and refresh status.': 'تعذّر تحميل حالة المكافآت. تحقّق من اتصالك وحدّث الحالة.',
+  'Reward accepted, but status could not refresh. Refresh status before claiming again.': 'تم قبول المكافأة، لكن تعذّر تحديث الحالة. حدّث الحالة قبل المحاولة مجددًا.',
+  'Could not confirm the reward. Check your connection and refresh status before trying again.': 'تعذّر تأكيد المكافأة. تحقّق من اتصالك وحدّث الحالة قبل المحاولة مجددًا.',
+  'Refresh reward status': 'تحديث حالة المكافآت',
+  'Daily reward received.': 'تم استلام المكافأة اليومية.',
+});
+
 export function useI18n() {
   const { language } = usePreferences();
   const fa = language === 'fa'; const arabic = language === 'ar';
