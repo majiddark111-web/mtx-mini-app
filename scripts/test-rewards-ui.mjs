@@ -21,6 +21,8 @@ import {BrowserRouter} from 'react-router-dom';
 import {DailyRewardPage} from '/src/pages/DailyRewardPage.tsx';
 import {MissionsPage} from '/src/pages/MissionsPage.tsx';
 import {ReferralPage} from '/src/pages/ReferralPage.tsx';
+import {InventoryPage} from '/src/pages/InventoryPage.tsx';
+import {appendTap, pendingTapCount} from '/src/services/tapOutboxService.ts';
 import {useAppStore} from '/src/store/useAppStore.ts';
 import {setApiSession} from '/src/api/httpClient.ts';
 import '/src/styles/tokens.css';
@@ -33,7 +35,9 @@ window.expireReviewSession=()=>useAppStore.setState({authStatus:'expired'});
 window.switchReviewAccount=()=>useAppStore.setState({user:{id:'other-review',username:'Other',avatar:'',isAdmin:false}});
 const root=createRoot(document.getElementById('root'));
 window.unmountReviewPage=()=>root.unmount();
-root.render(React.createElement(BrowserRouter,null,React.createElement(location.pathname==='/daily'?DailyRewardPage:location.pathname==='/referral'?ReferralPage:MissionsPage)));
+window.inventoryReviewState=()=>({score:useAppStore.getState().score,skin:useAppStore.getState().inventory.equippedSkin,pending:pendingTapCount(localStorage,'reward-review')});
+window.seedReviewTap=()=>appendTap(localStorage,'reward-review');
+root.render(React.createElement(BrowserRouter,null,React.createElement(location.pathname==='/inventory'?InventoryPage:location.pathname==='/daily'?DailyRewardPage:location.pathname==='/referral'?ReferralPage:MissionsPage)));
 `;
 const result = await build({configFile:false,publicDir:false,define:{'import.meta.env.VITE_API_BASE':JSON.stringify('')},plugins:[{name:'rewards-review',resolveId(id){if(id==='/rewards-review-entry.js')return '\0rewards-review';},load(id){if(id==='\0rewards-review')return entry;}}],build:{write:false,rollupOptions:{input:'tests/ui/rewards.html'}}});
 const assets=new Map(result.output.map(item=>['/'+item.fileName,item.type==='asset'?item.source:item.code]));
@@ -282,6 +286,105 @@ try {
     await context.close();
   }
   assert.equal(referralPassed,12);
+  let inventoryPassed=0;
+  for(const scenario of ['repeat-click','cross-action','skin-default','network-error','accepted-response-lost','refresh-error','load-error','expired-session','late-response','account-switch','unmount','taps-first','taps-fail','taps-expired']) {
+    const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+    context.setDefaultTimeout(10000);
+    let quantity=3,skin='skin:aurora',failedRead=false,mutations=0;
+    const posts=[],releases=[],errors=[];
+    const fixture=()=>({items:[{itemId:'boost:recharge',category:'boost',quantity,acquiredAt:3},{itemId:'consumable:energy',category:'consumable',quantity:3,acquiredAt:2},{itemId:'skin:aurora',category:'skin',quantity:1,acquiredAt:1}],purchases:[],equippedSkin:skin});
+    const game={coins:987,energy:1500,maximumEnergy:1500,profitPerTap:2,profitPerHour:0,tapLevel:1,energyLevel:1,profitLevel:0,version:2};
+    await context.route('**/*',async route=>{
+      const url=new URL(route.request().url());
+      if(url.origin!==origin)return route.abort();
+      if(url.pathname==='/inventory')return route.fulfill({contentType:'text/html',body:html});
+      if(assets.has(url.pathname))return route.fulfill({contentType:url.pathname.endsWith('.css')?'text/css':'text/javascript',body:assets.get(url.pathname)});
+      if(url.pathname==='/api/inventory'&&route.request().method()==='GET') {
+        if(!failedRead&&(scenario==='load-error'||scenario==='refresh-error'&&mutations>0)) {
+          failedRead=true;
+          return route.fulfill({status:503,json:{error:'Temporary failure'}});
+        }
+        return route.fulfill({json:fixture()});
+      }
+      if(route.request().method()==='POST'&&url.pathname.startsWith('/api/')) {
+        posts.push(url.pathname);
+        if(url.pathname==='/api/game/taps') {
+          if(scenario==='taps-fail')return route.abort('connectionfailed');
+          if(scenario==='taps-expired')await new Promise(resolve=>releases.push(resolve));
+          return route.fulfill({json:{state:game}});
+        }
+        assert.ok(['/api/inventory/activate','/api/inventory/skin'].includes(url.pathname));
+        mutations++;
+        if(scenario==='network-error')return route.abort('connectionfailed');
+        if(scenario!=='accepted-response-lost')await new Promise(resolve=>releases.push(resolve));
+        if(url.pathname.endsWith('/skin'))skin=route.request().postDataJSON().skinId;
+        else quantity--;
+        if(scenario==='accepted-response-lost')return route.abort('connectionfailed');
+        return route.fulfill({json:url.pathname.endsWith('/skin')?{equippedSkin:skin}:{state:game,items:fixture().items}});
+      }
+      return route.fulfill({status:404,body:''});
+    });
+    const page=await context.newPage();
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.goto(origin+'/inventory');
+    if(scenario==='load-error') {
+      await page.getByRole('alert').waitFor();
+      await page.getByRole('button',{name:'Refresh inventory'}).click();
+    }
+    const buttons=page.locator('.product-card button');
+    await buttons.first().waitFor();
+    const before=await page.evaluate(()=>window.inventoryReviewState());
+    if(scenario==='expired-session') {
+      await page.evaluate(()=>window.expireReviewSession());
+      await page.getByText('Reopen MTX in Telegram to use inventory.').waitFor();
+      assert.equal(await buttons.count(),0);
+      assert.equal(mutations,0);
+    } else if(scenario==='load-error') {
+      assert.equal(mutations,0);
+    } else {
+      if(scenario.startsWith('taps-'))await page.evaluate(()=>window.seedReviewTap());
+      if(scenario==='cross-action')await buttons.evaluateAll(elements=>{for(const el of elements)el.click();});
+      else await buttons.nth(scenario==='skin-default'?2:0).evaluate(el=>{el.click();el.click();});
+      if(['network-error','accepted-response-lost','taps-fail'].includes(scenario)) {
+        await page.getByRole('alert').waitFor();
+        assert.equal(await buttons.count(),0);
+      } else {
+        for(let i=0;!releases.length&&i<100;i++)await page.waitForTimeout(20);
+        assert.equal(releases.length,1);
+        assert.equal(await page.locator('.product-card button:not(:disabled)').count(),0);
+        if(scenario==='unmount')await page.evaluate(()=>window.unmountReviewPage());
+        if(scenario==='late-response'||scenario==='taps-expired')await page.evaluate(()=>window.expireReviewSession());
+        if(scenario==='account-switch')await page.evaluate(()=>window.switchReviewAccount());
+        for(const release of releases)release();
+      }
+      if(['network-error','accepted-response-lost','refresh-error','taps-fail'].includes(scenario)) {
+        await page.getByRole('alert').waitFor();
+        await page.getByRole('button',{name:'Refresh inventory'}).click();
+        await buttons.first().waitFor();
+        assert.equal(await page.locator('.product-card strong').first().innerText(),'Quantity: '+quantity);
+        assert.equal(mutations,scenario==='taps-fail'?0:1,'GET recovery must not repeat consumption');
+      } else if(['late-response','account-switch','unmount','taps-expired'].includes(scenario)) {
+        await page.waitForTimeout(200);
+        const after=await page.evaluate(()=>window.inventoryReviewState());
+        assert.equal(after.score,before.score,'Stale response must not change global game state');
+        if(scenario==='taps-expired')assert.equal(after.pending,1,'Unacknowledged tap must remain recoverable');
+      } else {
+        await page.getByText(scenario==='skin-default'?'Default MTX appearance restored.':'Recharge used once. Energy is now full.',{exact:true}).waitFor();
+        assert.equal(mutations,1);
+        if(scenario==='skin-default')assert.equal(await page.evaluate(()=>window.inventoryReviewState().skin),null);
+        else assert.equal(await page.locator('.product-card strong').first().innerText(),'Quantity: 2');
+      }
+      if(scenario==='taps-first')assert.deepEqual(posts,['/api/game/taps','/api/inventory/activate']);
+      if(scenario==='taps-fail'||scenario==='taps-expired')assert.deepEqual(posts,['/api/game/taps']);
+      assert.ok(mutations<=1);
+    }
+    assert.deepEqual(errors,[]);
+    console.log(JSON.stringify({page:'inventory',scenario,pass:true}));
+    inventoryPassed++;
+    await context.close();
+  }
+  assert.equal(inventoryPassed,14);
+  console.log('MTX_INVENTORY_UI_PASS '+inventoryPassed+' isolated scenarios');
   console.log('MTX_REFERRAL_UI_PASS '+referralPassed+' isolated scenarios');
   assert.equal(passed,19);
   console.log('MTX_REWARD_UI_PASS '+passed+' isolated scenarios; no live API requests');

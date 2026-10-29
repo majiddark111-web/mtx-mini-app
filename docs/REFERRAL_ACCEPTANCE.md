@@ -27,8 +27,12 @@ MTX_REFERRAL_UI_PASS 12 isolated scenarios
 MTX_REWARD_UI_PASS 19 isolated scenarios; no live API requests
 ```
 
-## Outstanding phone acceptance
+## Phone acceptance update — 2026-10-30
+
+The user reported successful link copying, opening the invite with a second account, correct inviter/invitee credit and persistence without duplicate credit after reopening. These are user-reported phone results, not independently inspected database evidence. The automated checks did not create or modify these accounts.
+
+## Original phone acceptance checklist
 
 After deployment, reopen the Mini App and open Invite friends. Check that the current code/statistics load, copying the link displays success, and the copied link names the intended bot with the current referral code. Do not publish or send it to anyone merely for verification.
 
-This local check does not prove clipboard permission behavior in every Telegram WebView, nor server-side referral accounting under concurrency. No real referral was submitted by the automated tests. A full two-account referral/credit test remains a separate acceptance task; do not manufacture accounts or reset existing referrals to pass it.
+This local check does not prove clipboard permission behavior in every Telegram WebView, nor server-side referral accounting under concurrency. No real referral was submitted by the automated tests. Do not manufacture accounts or reset existing referrals to repeat the acceptance test.

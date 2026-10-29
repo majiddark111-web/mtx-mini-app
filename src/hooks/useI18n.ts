@@ -2,6 +2,10 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'Reopen MTX in Telegram to use inventory.': 'أعد فتح MTX في تيليجرام لاستخدام الممتلكات.',
+  'Loading inventory…': 'جارٍ تحميل الممتلكات…',
+  'Inventory result could not be confirmed. Refresh inventory before trying again.': 'تعذّر تأكيد نتيجة العملية. حدّث الممتلكات قبل المحاولة مجددًا.',
+  'Refresh inventory': 'تحديث الممتلكات',
   'Referral accepted, but status could not refresh. Refresh status without submitting again.': 'تم قبول الدعوة، لكن تعذّر تحديث الحالة. حدّث الحالة دون إرسال الرمز مجددًا.',
   'Referral acceptance could not be confirmed. Check the code and refresh status before trying again.': 'تعذّر تأكيد قبول الدعوة. تحقّق من الرمز وحدّث الحالة قبل المحاولة مجددًا.',
   'Reopen MTX in Telegram to use referrals.': 'أغلق MTX وافتحه مجددًا في تيليجرام لاستخدام الدعوات.',
