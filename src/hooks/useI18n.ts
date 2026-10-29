@@ -2,6 +2,15 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'Referral accepted, but status could not refresh. Refresh status without submitting again.': 'تم قبول الدعوة، لكن تعذّر تحديث الحالة. حدّث الحالة دون إرسال الرمز مجددًا.',
+  'Referral acceptance could not be confirmed. Check the code and refresh status before trying again.': 'تعذّر تأكيد قبول الدعوة. تحقّق من الرمز وحدّث الحالة قبل المحاولة مجددًا.',
+  'Reopen MTX in Telegram to use referrals.': 'أغلق MTX وافتحه مجددًا في تيليجرام لاستخدام الدعوات.',
+  'Loading referral status…': 'جارٍ تحميل حالة الدعوات…',
+  'Refresh referral status': 'تحديث حالة الدعوات',
+  'Referral code accepted.': 'تم قبول رمز الدعوة.',
+  'Invite link copied.': 'تم نسخ رابط الدعوة.',
+  'Could not copy the link. Check clipboard permission and try again.': 'تعذّر نسخ الرابط. تحقّق من إذن الحافظة وحاول مجددًا.',
+  'Copying…': 'جارٍ النسخ…',
   All: 'الكل', Upgrades: 'الترقيات', Boosts: 'التعزيزات', Skins: 'المظاهر', Energy: 'الطاقة', Home: 'الرئيسية', Game: 'اللعبة', Inventory: 'الممتلكات', Missions: 'المهام', Wallet: 'المحفظة', Profile: 'الملف الشخصي',
   'Invite Friends': 'دعوة الأصدقاء', 'Daily Reward': 'المكافأة اليومية', Store: 'المتجر', Leaderboard: 'لوحة الصدارة', History: 'السجل', Settings: 'الإعدادات',
   'Telegram Mini App': 'تطبيق تيليجرام المصغّر', 'Tap. Earn. Level up.': 'انقر، اربح، وتقدّم.', 'Your current balance is': 'رصيدك الحالي هو', 'Play MTX': 'ابدأ اللعب', 'MTX features': 'ميزات MTX',
