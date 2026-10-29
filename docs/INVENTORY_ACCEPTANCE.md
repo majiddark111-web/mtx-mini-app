@@ -25,6 +25,8 @@ All 14 inventory checks, 12 referral checks and 19 reward checks passed. The exi
 
 ## Phone acceptance
 
+After publication of revision 951f295, the user reported having no consumables or skin and confirmed that the empty inventory message displayed correctly. Consumption/skin phone tests remain pending; no purchase was requested to unblock them.
+
 Before this change, the user reported that ordinary boost activation worked, quantity decreased by one and the result persisted after reopening. This is user-reported baseline evidence, not acceptance of the new version.
 
 After publishing this change, with an existing test consumable and energy below maximum: tap Use twice quickly, verify only one item is consumed and the result persists after reopening. If an outcome is uncertain, use Refresh inventory rather than repeatedly pressing Use. Do not buy or reset items solely to pass a test. Network-loss behavior on a real Telegram WebView remains pending phone acceptance.

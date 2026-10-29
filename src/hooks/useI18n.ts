@@ -2,6 +2,10 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'Recent recorded activity; daily rewards show only the latest claim.': 'النشاط المسجّل مؤخرًا؛ تُعرض آخر مكافأة يومية مستلمة فقط.',
+  'History could not load. Please retry.': 'تعذّر تحميل السجل. حاول مجددًا.',
+  'Leaderboard could not load. Please retry.': 'تعذّر تحميل لوحة الصدارة. حاول مجددًا.',
+  'Reopen MTX in Telegram to view rankings.': 'أعد فتح MTX في تيليجرام لعرض الترتيب.',
   'Reopen MTX in Telegram to use inventory.': 'أعد فتح MTX في تيليجرام لاستخدام الممتلكات.',
   'Loading inventory…': 'جارٍ تحميل الممتلكات…',
   'Inventory result could not be confirmed. Refresh inventory before trying again.': 'تعذّر تأكيد نتيجة العملية. حدّث الممتلكات قبل المحاولة مجددًا.',

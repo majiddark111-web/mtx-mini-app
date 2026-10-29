@@ -1,4 +1,5 @@
 import { httpClient } from '../api/httpClient';
+import { parseLeaders } from './readModels';
 export interface Mission { id: string; title: string; target: number; progress: number; reward: number; claimed: boolean; period: string; }
 export interface Leader { userId: string; username: string; coins: number; rank: number; }
 export type LeaderboardScope = 'global' | 'friends' | 'weekly' | 'monthly' | 'season';
@@ -11,7 +12,7 @@ export const fetchDailyChallenges = async (): Promise<DailyChallenges> => (await
 export const claimDailyChallenge = async (type: 'combo' | 'cipher', answer: string[]): Promise<void> => { await httpClient.post('/api/daily/challenges/claim', { type, answer }); };
 export const fetchReferral = async (): Promise<{ code: string; invited: number; earned: number }> => (await httpClient.get('/api/referral')).data as { code: string; invited: number; earned: number };
 export const acceptReferral = async (code: string, deviceHash: string): Promise<void> => { await httpClient.post('/api/referral/accept', { code, deviceHash }); };
-export const fetchLeaderboard = async (scope: LeaderboardScope = 'global'): Promise<Leader[]> => ((await httpClient.get(`/api/leaderboard?scope=${scope}`)).data as { entries: Leader[] }).entries;
+export const fetchLeaderboard = async (scope: LeaderboardScope = 'global'): Promise<Leader[]> => parseLeaders(((await httpClient.get(`/api/leaderboard?scope=${scope}`)).data as { entries?: unknown } | null)?.entries);
 export interface Achievement { id: string; icon: string; title: string; description: string; progress: number; target: number; unlocked: boolean; }
 export interface ProfileData { state: { coins: number; xp: number; level: number; rank: string; profitPerTap: number; profitPerHour: number }; inventory: unknown[]; referral: { invited: number; earned: number }; payments: unknown[]; achievements: Achievement[]; }
 export const fetchProfile = async (): Promise<ProfileData> => (await httpClient.get('/api/profile')).data as ProfileData;
