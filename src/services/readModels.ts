@@ -1,10 +1,21 @@
 import type { HistoryResult } from './historyService';
 import type { Leader } from './socialService';
+import type { NotificationResult } from './notificationService';
 
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const label = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
 const amount = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const unique = (values: Record<string, unknown>[], key: string) => new Set(values.map((value) => value[key])).size === values.length;
+
+export function parseNotifications(value: unknown): NotificationResult {
+  if (!record(value) || !Array.isArray(value.notifications) ||
+      !value.notifications.every((item) => record(item) && label(item.id) &&
+        typeof item.kind === 'string' && ['announcement', 'upgrade', 'purchase', 'payment', 'reward'].includes(item.kind) &&
+        typeof item.title === 'string' && typeof item.message === 'string' && amount(item.createdAt) && typeof item.read === 'boolean') ||
+      !unique(value.notifications, 'id') || !Number.isSafeInteger(value.unreadCount) ||
+      value.unreadCount !== value.notifications.filter((item) => !item.read).length) throw new Error('Invalid notifications');
+  return value as unknown as NotificationResult;
+}
 
 // Reject ambiguous rows rather than silently hiding duplicate records or inventing totals.
 export function parseHistory(value: unknown): HistoryResult {

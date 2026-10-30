@@ -1,16 +1,45 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../hooks/useI18n';
-import { fetchNotifications } from '../../services/notificationService';
+import { fetchNotifications, NOTIFICATIONS_CHANGED } from '../../services/notificationService';
 import { useAppStore } from '../../store/useAppStore';
 
 export function NotificationBell() {
-  const auth = useAppStore((state) => state.authStatus); const { text, number } = useI18n(); const [unread, setUnread] = useState(0);
+  const auth = useAppStore((state) => state.authStatus);
+  const userId = useAppStore((state) => state.user.id);
+  const { text, number } = useI18n();
+  const [badge, setBadge] = useState<{ userId: string; unread?: number }>({ userId: '' });
   useEffect(() => {
-    if (auth !== 'authenticated') { setUnread(0); return; }
-    let active = true; const load = () => void fetchNotifications().then((result) => { if (active) setUnread(result.unreadCount); }).catch(() => undefined);
-    const cleared = () => setUnread(0); load(); const timer = window.setInterval(load, 60_000); window.addEventListener('mtx:notifications-read', cleared);
-    return () => { active = false; window.clearInterval(timer); window.removeEventListener('mtx:notifications-read', cleared); };
-  }, [auth]);
-  return <Link className="notification-bell" to="/notifications" aria-label={text('Notifications', 'اعلان‌ها')}>🔔{unread > 0 && <b>{number(Math.min(99, unread))}{unread > 99 ? '+' : ''}</b>}</Link>;
+    let active = true, inFlight = false, queued = false, revision = 0;
+    const current = () => active && useAppStore.getState().authStatus === 'authenticated' && useAppStore.getState().user.id === userId;
+    setBadge({ userId });
+    if (auth !== 'authenticated' || !userId) return () => { active = false; };
+    const load = async () => {
+      if (!current()) return;
+      if (inFlight) { queued = true; return; }
+      inFlight = true;
+      const started = revision;
+      try {
+        const result = await fetchNotifications();
+        if (current() && started === revision) setBadge({ userId, unread: result.unreadCount });
+      } catch {
+        if (current() && started === revision) setBadge({ userId });
+      } finally {
+        inFlight = false;
+        if (queued && current()) { queued = false; void load(); }
+      }
+    };
+    const changed = (event: Event) => {
+      if ((event as CustomEvent<{ userId?: string }>).detail?.userId !== userId || !current()) return;
+      revision++;
+      setBadge({ userId });
+      void load();
+    };
+    void load();
+    const timer = window.setInterval(() => { if (!inFlight) void load(); }, 60_000);
+    window.addEventListener(NOTIFICATIONS_CHANGED, changed);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener(NOTIFICATIONS_CHANGED, changed); };
+  }, [auth, userId]);
+  const unread = auth === 'authenticated' && badge.userId === userId ? badge.unread : undefined;
+  return <Link className="notification-bell" to="/notifications" aria-label={text('Notifications', 'اعلان‌ها')}>🔔{unread !== undefined && unread > 0 && <b>{number(Math.min(99, unread))}{unread > 99 ? '+' : ''}</b>}</Link>;
 }

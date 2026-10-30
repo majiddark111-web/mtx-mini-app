@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'Notification status could not be confirmed. Refresh without marking again.': 'تعذّر تأكيد حالة الإشعارات. حدّث الحالة دون تكرار العملية.',
   'Recent recorded activity; daily rewards show only the latest claim.': 'النشاط المسجّل مؤخرًا؛ تُعرض آخر مكافأة يومية مستلمة فقط.',
   'History could not load. Please retry.': 'تعذّر تحميل السجل. حاول مجددًا.',
   'Leaderboard could not load. Please retry.': 'تعذّر تحميل لوحة الصدارة. حاول مجددًا.',

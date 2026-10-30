@@ -34,4 +34,6 @@ Scenarios cover normal and empty lists, failed/malformed/duplicate reads, read-o
 2. Open History. Switch Purchases, Payments and Rewards; check one already-known record per available category and confirm unpaid payments do not display positive credit.
 3. Reopen the app and confirm the same recorded actions are not duplicated.
 
-No new purchase, referral, reward reset or inventory acquisition is needed. Phone acceptance of this revision is pending.
+No new purchase, referral, reward reset or inventory acquisition is needed.
+
+After reporting revision 4f88a21 Live, the user confirmed all three phone checks succeeded: ranking scopes and history categories loaded correctly, known payment status was correct, and reopening did not display duplicate activity. This is user-reported acceptance, not an independent audit of production records.

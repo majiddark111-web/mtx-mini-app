@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseHistory, parseLeaders } from './readModels.ts';
+import { parseHistory, parseLeaders, parseNotifications } from './readModels.ts';
 
 const purchase = { id: 'same', itemId: 'boost:recharge', price: 20, createdAt: 1 };
 const payment = { transactionId: 'same', provider: 'ton', asset: 'TON', status: 'pending', amount: 0.01, creditedCoins: 100, createdAt: 2 };
 const reward = { id: 'same', title: 'Reward', amount: 10, createdAt: 3 };
 const history = () => ({ purchases: [purchase], payments: [payment], rewards: [reward] });
+const notice = { id: 'reward:1', kind: 'reward', title: 'Reward', message: 'Earned 100', createdAt: 1000, read: false };
+test('notifications accept all kinds, empty inboxes and consistent counts', () => {
+  assert.deepEqual(parseNotifications({ notifications: [], unreadCount: 0 }), { notifications: [], unreadCount: 0 });
+  for (const kind of ['announcement', 'upgrade', 'purchase', 'payment', 'reward']) {
+    const value = { notifications: [{ ...notice, kind }], unreadCount: 1 };
+    assert.deepEqual(parseNotifications(value), value);
+  }
+});
+test('notifications reject duplicate IDs and inconsistent unread counters', () => {
+  for (const value of [{ notifications: [notice, notice], unreadCount: 2 }, { notifications: [notice], unreadCount: 0 },
+    { notifications: [{ ...notice, read: true }], unreadCount: 1 }, { notifications: [], unreadCount: -1 }]) assert.throws(() => parseNotifications(value));
+});
+test('notifications reject malformed records and nonfinite timestamps', () => {
+  for (const value of [null, {}, { notifications: null, unreadCount: 0 },
+    ...[{ kind: 'fake' }, { kind: ['reward'] }, { read: 'false' }, { createdAt: NaN }, { message: null }].map((change) => ({ notifications: [{ ...notice, ...change }], unreadCount: 1 }))]) assert.throws(() => parseNotifications(value));
+});
 test('history accepts empty data and independent identity namespaces without changing values', () => {
   assert.deepEqual(parseHistory({ purchases: [], payments: [], rewards: [] }), { purchases: [], payments: [], rewards: [] });
   assert.deepEqual(parseHistory(history()), history());
