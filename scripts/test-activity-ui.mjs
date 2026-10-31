@@ -41,7 +41,7 @@ const leaders=(name='review')=>[{userId:name,username:name,coins:1250,rank:1}];
 let passed=0;
 try {
  for(const kind of ['history','leaderboard']) {
-  const scenarios=['normal','empty','load-error','duplicate','account-late','expired-late','unmount',...(kind==='history'?['filters']:['scope-late','poll-single-flight','poll-failure','socket-malformed','socket-newer','socket-silent','socket-stale','scroll-shrink'])];
+  const scenarios=['normal','empty','load-error','duplicate','account-late','expired-late','unmount',...(kind==='history'?['filters','legacy-date']:['scope-late','poll-single-flight','poll-failure','socket-malformed','socket-newer','socket-silent','socket-stale','scroll-shrink'])];
   for(const scenario of scenarios) {
    const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
    context.setDefaultTimeout(10000);
@@ -74,6 +74,7 @@ try {
      if((['account-late','expired-late','unmount','scope-late','socket-newer'].includes(scenario)&&read===1)||(scenario==='poll-single-flight'&&read===2))await new Promise(resolve=>releases.push(resolve));
      if((scenario==='load-error'&&read===1)||failNext){failNext=false;return route.fulfill({status:503,json:{error:'Unavailable'}});}
      let data=kind==='history'?history(name):{entries:leaders(scope==='friends'?'friend':name)};
+     if(scenario==='legacy-date')data.rewards[0]={...data.rewards[0],createdAt:Date.parse('2026-10-26T00:00:00Z'),dateOnly:'2026-10-26'};
      if(scenario==='scroll-shrink'&&read===1)data={entries:Array.from({length:100},(_,i)=>({userId:'u'+i,username:'User '+i,coins:100-i,rank:i+1}))};
      if(scenario==='empty')data=kind==='history'?{purchases:[],payments:[],rewards:[]}:{entries:[]};
      if(scenario==='duplicate'&&read===1){if(kind==='history')data.purchases.push(data.purchases[0]);else data.entries.push(data.entries[0]);}
@@ -115,6 +116,7 @@ try {
      assert.equal(await page.locator('.activity-item .positive').count(),2,'Only confirmed payment and actual reward show credit');
      assert.equal(await page.getByText('No credit',{exact:true}).count(),3);
      assert.match(await rows.last().innerText(),/−1,250 MTX/);
+     if(scenario==='legacy-date')assert.equal(await rows.first().locator('time').innerText(),'2026-10-26 · UTC date; exact time unavailable');
      if(scenario==='filters') {
       for(const [tab,count] of [['Payments',4],['Rewards',1],['Purchases',1],['All',6]]){await page.getByRole('tab',{name:tab}).click();assert.equal(await rows.count(),count);}
       assert.equal(reads,1,'Filtering must not refetch or create records');
@@ -165,6 +167,6 @@ try {
    passed++;await context.close();
   }
  }
- assert.equal(passed,23);
+ assert.equal(passed,24);
  console.log('MTX_ACTIVITY_UI_PASS '+passed+' isolated read-only scenarios');
 } finally {await browser.close();}

@@ -27,6 +27,11 @@ test('history accepts empty data and independent identity namespaces without cha
   assert.deepEqual(parseHistory(history()), history());
   for (const status of ['confirmed', 'pending', 'failed', 'refunded']) assert.equal(parseHistory({ ...history(), payments: [{ ...payment, status }] }).payments[0].status, status);
 });
+
+test('history accepts explicit legacy day precision and rejects malformed date metadata', () => {
+  assert.equal(parseHistory({ ...history(), rewards: [{ ...reward, dateOnly: '2026-10-26' }] }).rewards[0].dateOnly, '2026-10-26');
+  for (const dateOnly of [23, '', 'unknown']) assert.throws(() => parseHistory({ ...history(), rewards: [{ ...reward, dateOnly }] }));
+});
 test('history rejects duplicate identities in each category instead of silently hiding records', () => {
   for (const key of ['purchases', 'payments', 'rewards'] as const) {
     const value = history();

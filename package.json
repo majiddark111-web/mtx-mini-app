@@ -18,6 +18,7 @@
     "test:rewards:ui": "node scripts/test-rewards-ui.mjs",
     "test:activity:ui": "node scripts/test-activity-ui.mjs",
     "test:notifications:ui": "node scripts/test-notifications-ui.mjs",
+    "test:daily:archive": "node scripts/test-daily-archive.mjs",
     "test:integration": "node --experimental-strip-types server/integration/run.mjs",
     "test:integration:isolated": "node --experimental-strip-types server/integration/isolated.mjs",
     "test:load:isolated": "node --experimental-strip-types server/integration/loadIsolated.mjs",

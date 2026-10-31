@@ -26,7 +26,8 @@ export function parseHistory(value: unknown): HistoryResult {
       !payments.every((item) => record(item) && label(item.transactionId) && ['ton', 'usdt'].includes(String(item.provider)) &&
         ['TON', 'USDT'].includes(String(item.asset)) && ['pending', 'confirmed', 'failed', 'refunded'].includes(String(item.status)) &&
         amount(item.amount) && amount(item.creditedCoins) && amount(item.createdAt)) ||
-      !rewards.every((item) => record(item) && label(item.id) && label(item.title) && amount(item.amount) && amount(item.createdAt)) ||
+      !rewards.every((item) => record(item) && label(item.id) && label(item.title) && amount(item.amount) && amount(item.createdAt) &&
+        (item.dateOnly === undefined || typeof item.dateOnly === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.dateOnly))) ||
       !unique(purchases, 'id') || !unique(payments, 'transactionId') || !unique(rewards, 'id')) throw new Error('Invalid history');
   return value as unknown as HistoryResult;
 }

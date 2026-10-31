@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'Recent recorded activity; daily claims are archived from the archive update onward.': 'النشاط المسجّل مؤخرًا؛ تُحفظ المكافآت اليومية منذ تحديث الأرشيف.',
+  'UTC date; exact time unavailable': 'تاريخ UTC؛ الوقت الدقيق غير متاح',
   'Notification status could not be confirmed. Refresh without marking again.': 'تعذّر تأكيد حالة الإشعارات. حدّث الحالة دون تكرار العملية.',
   'Recent recorded activity; daily rewards show only the latest claim.': 'النشاط المسجّل مؤخرًا؛ تُعرض آخر مكافأة يومية مستلمة فقط.',
   'History could not load. Please retry.': 'تعذّر تحميل السجل. حاول مجددًا.',

@@ -22,7 +22,7 @@ Responses are checked for valid notification kinds, unique IDs, boolean read fla
 
 No server or migration change is included. The read watermark is per-user and monotonic via SQL GREATEST. It marks notifications at or before the server's processing time, not only the rows visible when the button was clicked. The inbox and unread count are limited to the existing returned snapshot (up to 200 rows). Separate open tabs receive updated counts through their existing polling; the change event is local to the current window.
 
-These tests do not audit production database contents or independently prove cross-device behavior. Real-phone acceptance of this revision is still pending.
+These tests do not audit production database contents or independently prove cross-device behavior. After reporting the revision Live, the user confirmed that Mark all read, the bell counter and persistence after reopening worked on the phone. This is user-reported acceptance.
 
 ## Phone acceptance after publishing
 

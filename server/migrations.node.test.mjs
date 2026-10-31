@@ -15,9 +15,9 @@ describe('database migrations', () => {
         return { rows: [] };
       },
     };
-    assert.deepEqual(await runMigrations(database), ['001_initial.sql', '002_equipped_cosmetics.sql', '003_notification_read_state.sql', '004_tap_receipts.sql', '005_payment_intents.sql']);
+    assert.deepEqual(await runMigrations(database), ['001_initial.sql', '002_equipped_cosmetics.sql', '003_notification_read_state.sql', '004_tap_receipts.sql', '005_payment_intents.sql', '006_daily_reward_history.sql']);
     assert.deepEqual(await runMigrations(database), []);
     assert.equal(schemaExecutions, 1);
-    assert.equal(applied.size, 5);
+    assert.equal(applied.size, 6);
   });
 });
