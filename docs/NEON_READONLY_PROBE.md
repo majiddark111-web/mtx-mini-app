@@ -19,8 +19,17 @@ After collecting the result, restore the recorded Start Command, remove only MTX
 - Only the user-confirmed Neon direct host, port 5432, neondb and neondb_owner are accepted. No fallback to other credentials.
 - URL query parameters cannot weaken TLS or pass arbitrary PostgreSQL options. Explicit certificate/hostname verification and channel-binding support are enabled in the dedicated pg client.
 - One client, one read-only transaction, no retry loop, no Redis, no migration, no DDL and no payment/claim calls. Connection/query timeouts and a 45-second process deadline bound the command.
-- Checks TLS, role/database/PostgreSQL 18, read-only transaction status, all six migration names/checksums, 20 public tables, reward-history presence and enabled archive trigger.
+- Checks the actual Node pg client-to-Neon socket for encryption, CA authorization, hostname match and TLS 1.2 or 1.3. `pg_stat_ssl` is not used as proof of this hop: Neon terminates client TLS at its proxy. Missing socket evidence fails closed with `NEON_PROBE_TLS`; certificate validation is never disabled.
+- Checks role/database/PostgreSQL 18, read-only transaction status, all six migration names/checksums, 20 public tables, reward-history presence and enabled archive trigger.
 - Output is a fixed summary or allowlisted failure category; no credential, user ID, wallet address or balance is logged.
 - The earlier 20-table content-fingerprint match remains separate evidence. This probe does not repeat it, test writes, prove production capacity, or include newer activity on Render.
 
-No Render environment variable or Start Command was changed when adding these files. No live probe has run yet. Final migration still requires pausing all writes, taking a fresh backup and restoring it to a separate empty final destination before switching the application.
+## Reported runtime result and TLS correction — 2026-11-01
+
+The owner supplied a Render probe failure `NEON_PROBE_IDENTITY`, followed by a separate pgAdmin read-only result `neondb / neondb_owner / 180006 / backend_ssl=false`. The earlier probe incorrectly required `pg_stat_ssl.ssl=true`, which describes the backend connection rather than the client's TLS connection through Neon's proxy. The corrected check uses pg's Node TLSSocket after connect and retains strict certificate and hostname validation. Reference: https://nodejs.org/docs/latest-v22.x/api/tls.html#tlssocketauthorized and https://github.com/neondatabase/neon/blob/main/proxy/README.md
+
+This code correction does not change remote settings. A successful corrected Render probe is still pending; the pgAdmin result alone is not a full probe PASS. A credential shared in chat must be rotated privately and the probe variable updated; never copy the exposed credential into code, tests, logs or documentation.
+
+Local Node 22 verification: 24 probe unit tests pass, including proxy backend `ssl=false`, authorized TLS 1.2/1.3, wrong hostname, untrusted/plaintext/missing socket evidence, and unchanged identity/read-only/schema checks. The complete project unit suite passes 280 tests with zero failures/skips. These fixture-based tests do not substitute for a live Render-to-Neon probe.
+
+Final migration still requires pausing all writes, taking a fresh backup and restoring it to a separate empty final destination before switching the application.
