@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { neonProbeConfig, probeNeon, safeProbeFailure, migrationReference } from './neonReadOnlyProbe.mjs';
+import { neonProbeConfig, neonFinalProbeConfig, probeNeon, probeFinalNeon, safeProbeFailure, migrationReference } from './neonReadOnlyProbe.mjs';
 
 const url = 'postgresql://neondb_owner:fixture%40only@ep-shy-frost-aoj2cl9v.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 test('Neon probe enforces target, credentials and TLS independently of active app settings', () => {
@@ -23,7 +23,7 @@ test('Neon probe enforces target, credentials and TLS independently of active ap
   assert.throws(() => neonProbeConfig({ DATABASE_URL: url }), /NEON_PROBE_CONFIG/);
 });
 
-function fixture(fault) {
+function fixture(fault, database = 'neondb') {
   const calls = [];
   const ref = [{ version: 6, name: '006_daily_reward_history.sql', checksum: 'fixture' }];
   const client = {
@@ -37,7 +37,7 @@ function fixture(fault) {
     async query(sql) {
       calls.push(sql);
       if (fault === 'query') throw new Error('private');
-      if (sql.includes('current_database')) return { rows: [{ db: fault === 'identity' ? 'wrong' : 'neondb',
+      if (sql.includes('current_database')) return { rows: [{ db: fault === 'identity' ? 'wrong' : database,
         role: fault === 'role' ? 'wrong' : 'neondb_owner',
         version: fault === 'version' ? 170000 : 180006,
         readonly: fault === 'readonly' ? 'off' : 'on', tls: false }] };
@@ -105,4 +105,52 @@ test('Migration reference reads current files without running migrations', async
   assert.equal(ref.length, 6);
   assert.deepEqual(ref.map(r => r.version), [1, 2, 3, 4, 5, 6]);
   for (const row of ref) assert.match(row.checksum, /^[a-f0-9]{64}$/);
+});
+
+const finalUrl = url.replace('/neondb?', '/mtx_final_20261101?').replace('sslmode=require', 'sslmode=verify-full');
+test('Final gate accepts only the active final DATABASE_URL with verified TLS', () => {
+  const config = neonFinalProbeConfig({ DATABASE_URL: finalUrl, MTX_NEON_PROBE_URL: url });
+  assert.equal(config.database, 'mtx_final_20261101');
+  assert.equal(config.ssl.rejectUnauthorized, true);
+  assert.equal(config.password, 'fixture@only');
+  assert.match(config.options, /default_transaction_read_only=on/);
+  for (const environment of [
+    {}, { MTX_NEON_PROBE_URL: finalUrl }, { POSTGRES_URL: finalUrl },
+    { DATABASE_URL: url }, { DATABASE_URL: ' ' + finalUrl },
+    { DATABASE_URL: finalUrl, POSTGRES_SSL: 'false' },
+    { DATABASE_URL: finalUrl, POSTGRES_TLS_REJECT_UNAUTHORIZED: 'false' },
+    { DATABASE_URL: finalUrl.replace('verify-full', 'require') },
+    { DATABASE_URL: finalUrl.replace('sslmode=verify-full&', '') },
+    { DATABASE_URL: finalUrl + '&sslmode=verify-full' },
+    { DATABASE_URL: finalUrl + '&sslmode=disable' },
+    { DATABASE_URL: finalUrl.replace('neon.tech', 'example.com') },
+    { DATABASE_URL: finalUrl.replace('neondb_owner:', 'other:') },
+  ]) assert.throws(() => neonFinalProbeConfig(environment), /NEON_PROBE_CONFIG/);
+  assert.throws(() => neonProbeConfig({ MTX_NEON_PROBE_URL: finalUrl }), /NEON_PROBE_CONFIG/);
+});
+
+test('Final gate verifies destination identity and schema without writes', async () => {
+  const f = fixture(undefined, 'mtx_final_20261101');
+  const result = await probeFinalNeon({ DATABASE_URL: finalUrl }, config => {
+    assert.equal(config.database, 'mtx_final_20261101');
+    return f.client;
+  }, f.ref);
+  assert.deepEqual(result, { database: 'mtx_final_20261101', tls: true, readonly: true,
+    tables: 20, migrations: 1, rewardTrigger: true });
+  for (const sql of f.calls.slice(1, -1)) assert.match(sql, /^(SELECT|BEGIN READ ONLY|ROLLBACK)/);
+  assert.equal(f.calls.at(-1), 'end');
+});
+
+for (const fault of ['identity', 'role', 'version', 'readonly', 'tls', 'schema', 'trigger']) {
+  test('Final gate blocks ' + fault + ' and closes connection', async () => {
+    const f = fixture(fault, 'mtx_final_20261101');
+    await assert.rejects(probeFinalNeon({ DATABASE_URL: finalUrl }, () => f.client, f.ref));
+    assert.equal(f.calls.at(-1), 'end');
+  });
+}
+
+test('Final gate rejects rehearsal database reported by the server', async () => {
+  const f = fixture();
+  await assert.rejects(probeFinalNeon({ DATABASE_URL: finalUrl }, () => f.client, f.ref), /NEON_PROBE_IDENTITY/);
+  assert.equal(f.calls.at(-1), 'end');
 });

@@ -8,21 +8,34 @@ const fail = () => { throw new Error('NEON_PROBE_CONFIG'); };
 
 export function neonProbeConfig(environment) {
   // Never fall back to the active DATABASE_URL, PG* settings, or URL TLS flags.
-  const raw = environment.MTX_NEON_PROBE_URL?.trim();
+  return targetConfig(environment.MTX_NEON_PROBE_URL?.trim(), 'neondb', false);
+}
+
+export function neonFinalProbeConfig(environment) {
+  // Final cutover deliberately validates the app's effective URL, not the rehearsal secret.
+  if (environment.POSTGRES_SSL === 'false' || environment.POSTGRES_TLS_REJECT_UNAUTHORIZED === 'false') fail();
+  const raw = environment.DATABASE_URL;
+  if (typeof raw !== 'string' || raw !== raw.trim()) fail();
+  return targetConfig(raw, 'mtx_final_20261101', true);
+}
+
+function targetConfig(raw, database, finalTarget) {
   if (!raw) fail();
   let url;
   try { url = new URL(raw); } catch { fail(); }
   if (!['postgres:', 'postgresql:'].includes(url.protocol) || url.hostname !== host ||
-      (url.port && url.port !== '5432') || url.pathname !== '/neondb' ||
+      (url.port && url.port !== '5432') || url.pathname !== '/' + database ||
       url.username !== 'neondb_owner' || !url.password || url.hash) fail();
   for (const [key, value] of url.searchParams) {
     if (!((key === 'sslmode' && ['require', 'verify-full'].includes(value)) ||
           (key === 'channel_binding' && value === 'require'))) fail();
   }
+  if (finalTarget && (url.searchParams.getAll('sslmode').length !== 1 ||
+      url.searchParams.get('sslmode') !== 'verify-full')) fail();
   let password;
   try { password = decodeURIComponent(url.password); } catch { fail(); }
   return {
-    host, port: 5432, database: 'neondb', user: 'neondb_owner', password,
+    host, port: 5432, database, user: 'neondb_owner', password,
     ssl: { rejectUnauthorized: true, servername: host, minVersion: 'TLSv1.2' },
     enableChannelBinding: true,
     application_name: 'mtx-neon-readonly-probe',
@@ -56,7 +69,17 @@ export async function migrationReference() {
 }
 
 export async function probeNeon(environment, makeClient, reference) {
-  const client = makeClient(neonProbeConfig(environment));
+  return probeTarget(neonProbeConfig(environment), makeClient, reference);
+}
+
+export async function probeFinalNeon(environment, makeClient, reference) {
+  const config = neonFinalProbeConfig(environment);
+  const summary = await probeTarget(config, makeClient, reference);
+  return { database: config.database, ...summary };
+}
+
+async function probeTarget(config, makeClient, reference) {
+  const client = makeClient(config);
   // Idle connection errors must not print connection details via an uncaught event.
   let idleError = false;
   client.on('error', () => { idleError = true; });
@@ -67,7 +90,7 @@ export async function probeNeon(environment, makeClient, reference) {
     const { rows: [identity] } = await client.query(`SELECT current_database() AS db,
       current_user AS role, current_setting('server_version_num')::int AS version,
       current_setting('transaction_read_only') AS readonly`);
-    if (identity?.db !== 'neondb' || identity.role !== 'neondb_owner' ||
+    if (identity?.db !== config.database || identity.role !== 'neondb_owner' ||
         identity.version < 180000 || identity.version >= 190000 ||
         identity.readonly !== 'on') throw new Error('NEON_PROBE_IDENTITY');
     const { rows: migrations } = await client.query('SELECT version, name, checksum FROM public.mtx_schema_migrations ORDER BY version');
