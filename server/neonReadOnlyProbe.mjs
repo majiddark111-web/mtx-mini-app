@@ -78,7 +78,43 @@ export async function probeFinalNeon(environment, makeClient, reference) {
   return { database: config.database, ...summary };
 }
 
-async function probeTarget(config, makeClient, reference) {
+const establishedTables = Object.freeze([
+  'mtx_admin_bans', 'mtx_admin_logs', 'mtx_anti_cheat_anomalies', 'mtx_challenge_claims',
+  'mtx_daily_claims', 'mtx_daily_reward_history', 'mtx_equipped_cosmetics', 'mtx_events',
+  'mtx_game_state', 'mtx_inventory', 'mtx_mission_claims', 'mtx_notification_read_state',
+  'mtx_notifications', 'mtx_payment_intents', 'mtx_payments', 'mtx_purchases',
+  'mtx_referrals', 'mtx_schema_migrations', 'mtx_tap_events', 'mtx_tap_receipts',
+]);
+
+export function neonDeploymentPhase(args) {
+  if (args.length === 0) return 'startup';
+  if (args.length === 1 && args[0] === '--before-migrate') return 'before-migrate';
+  fail();
+}
+
+export async function probeNeonDeployment(environment, makeClient, reference, phase = 'startup') {
+  if (!['before-migrate', 'startup'].includes(phase)) fail();
+  // This guard protects the established database; it must not bootstrap an empty one.
+  if (!Array.isArray(reference) || reference.length < 6 || reference.some((row, index) =>
+    row?.version !== index + 1 || !/^\d{3}_[a-z0-9_]+\.sql$/.test(row.name) ||
+    Number(row.name.slice(0, 3)) !== row.version || !/^[a-f0-9]{64}$/.test(row.checksum))) {
+    throw new Error('NEON_PROBE_SCHEMA');
+  }
+  const config = neonFinalProbeConfig(environment);
+  return { database: config.database, phase, ...await probeTarget(config, makeClient, reference, phase) };
+}
+
+function verifyAppliedMigrations(applied, reference, phase) {
+  // Before migration, only an unchanged, ordered prefix may be present.
+  // Startup requires the entire release, blocking partial upgrades and old-code rollbacks.
+  if (applied.length < 6 || applied.length > reference.length ||
+      (phase === 'startup' && applied.length !== reference.length) ||
+      applied.some((row, index) => ['version', 'name', 'checksum'].some(key => row[key] !== reference[index][key]))) {
+    throw new Error('NEON_PROBE_SCHEMA');
+  }
+}
+
+async function probeTarget(config, makeClient, reference, phase = 'cutover') {
   const client = makeClient(config);
   // Idle connection errors must not print connection details via an uncaught event.
   let idleError = false;
@@ -94,6 +130,20 @@ async function probeTarget(config, makeClient, reference) {
         identity.version < 180000 || identity.version >= 190000 ||
         identity.readonly !== 'on') throw new Error('NEON_PROBE_IDENTITY');
     const { rows: migrations } = await client.query('SELECT version, name, checksum FROM public.mtx_schema_migrations ORDER BY version');
+    if (phase !== 'cutover') {
+      verifyAppliedMigrations(migrations, reference, phase);
+      const { rows: tables } = await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename");
+      const names = new Set(tables.map(row => row.tablename));
+      if (establishedTables.some(name => !names.has(name))) throw new Error('NEON_PROBE_SCHEMA');
+      const { rows: [status] } = await client.query(`SELECT EXISTS(
+        SELECT 1 FROM pg_trigger WHERE tgrelid='public.mtx_daily_claims'::regclass
+        AND tgname='mtx_archive_daily_reward' AND tgenabled='O' AND NOT tgisinternal) AS trigger`);
+      if (status?.trigger !== true) throw new Error('NEON_PROBE_SCHEMA');
+      if (idleError) throw new Error('NEON_PROBE_CONNECTION');
+      await client.query('ROLLBACK');
+      return { tls: true, readonly: true, tables: tables.length, migrations: migrations.length,
+        pendingMigrations: reference.length - migrations.length, rewardTrigger: true };
+    }
     if (JSON.stringify(migrations) !== JSON.stringify(reference)) throw new Error('NEON_PROBE_SCHEMA');
     const { rows: [status] } = await client.query(`SELECT
       (SELECT count(*)::int FROM pg_tables WHERE schemaname='public') AS tables,

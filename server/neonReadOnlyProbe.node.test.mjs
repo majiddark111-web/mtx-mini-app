@@ -102,8 +102,8 @@ test('Neon errors never copy arbitrary secrets from messages, stacks or codes', 
 });
 test('Migration reference reads current files without running migrations', async () => {
   const ref = await migrationReference();
-  assert.equal(ref.length, 6);
-  assert.deepEqual(ref.map(r => r.version), [1, 2, 3, 4, 5, 6]);
+  assert.ok(ref.length >= 6);
+  assert.deepEqual(ref.map(r => r.version), Array.from({ length: ref.length }, (_, index) => index + 1));
   for (const row of ref) assert.match(row.checksum, /^[a-f0-9]{64}$/);
 });
 
