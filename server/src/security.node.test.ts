@@ -99,14 +99,17 @@ describe('Telegram authentication security', () => {
     assert.equal(limiter.consume('user:42', 1_000), true);
     assert.equal(limiter.consume('user:42', 1_100), true);
     assert.equal(limiter.consume('user:42', 1_200), false);
+    assert.equal(limiter.consumeWithDelay('user:42', 1_250), 750);
     assert.equal(limiter.consume('user:42', 2_001), true);
   });
 
   it('uses an atomic Redis script for shared production rate limits', async () => {
-    class FakeRedis { count = 0; commands: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.commands.push(parts); this.count += 1; return this.count as T; } }
+    class FakeRedis { count = 0; commands: string[][] = []; async command<T>(parts: string[]): Promise<T> { this.commands.push(parts); this.count += 1; return (this.count <= Number(parts[5]) ? 0 : 3725) as T; } }
     const redis = new FakeRedis(); const limiter = new RedisRateLimiter(redis, 2, 60_000, 'mtx:rate');
     assert.equal(await limiter.consume('ip:127.0.0.1'), true); assert.equal(await limiter.consume('ip:127.0.0.1'), true); assert.equal(await limiter.consume('ip:127.0.0.1'), false);
     assert.equal(redis.commands[0][0], 'EVAL'); assert.match(redis.commands[0][1], /PEXPIRE/); assert.equal(redis.commands[0][3], 'mtx:rate:ip:127.0.0.1');
+    assert.match(redis.commands[0][1], /PTTL/);
+    assert.equal(await limiter.consumeWithDelay('ip:127.0.0.1'), 3725);
   });
 
   it('rejects an authenticated batch above 15 taps per second', async () => {

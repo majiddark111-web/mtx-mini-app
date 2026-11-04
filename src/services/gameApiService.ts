@@ -1,6 +1,9 @@
 import { httpClient, getApiSessionSubject } from '../api/httpClient';
 import { reconciledTapState } from './gameService';
 import { gameDiagnostics } from './playerDiagnostics';
+import { TapRetryWindow } from './tapRetryWindow';
+
+export const tapRetryWindow = new TapRetryWindow(() => window.sessionStorage);
 
 export interface ServerGameState {
   coins: number;
@@ -23,9 +26,14 @@ export async function fetchGameState(): Promise<{ state: ServerGameState; offlin
 
 export async function syncTapBatch(taps: number, durationMs: number, batchId: string): Promise<ServerGameState> {
   const account = getApiSessionSubject();
+  if (tapRetryWindow.remaining(account) > 0) throw new Error('Tap sync is temporarily rate limited');
   const response = await httpClient.post<{ state: ServerGameState; flagged?: boolean }>('/api/game/taps', { taps, durationMs, batchId }, {
-    validateStatus: (status) => (status >= 200 && status < 300) || status === 422,
+    validateStatus: (status) => (status >= 200 && status < 300) || status === 422 || status === 429,
   });
+  if (response.status === 429) {
+    tapRetryWindow.defer(account, response.headers['retry-after']);
+    throw new Error('Tap sync is temporarily rate limited');
+  }
   // A confirmed rejection is terminal: reconcile with the server and remove
   // this batch from the outbox. Transport/server failures still remain queued.
   const state = reconciledTapState(response.status, response.data);

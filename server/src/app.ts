@@ -35,7 +35,12 @@ const publicPaymentIntent = (intent: PaymentIntent) => ({ transactionId: intent.
 
 function corsHeaders(request: Request, env: Env): HeadersInit {
   const origin = request.headers.get('origin');
-  return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type, x-mtx-timestamp, x-mtx-nonce, x-mtx-signature', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
+  return origin === env.APP_ORIGIN ? { 'access-control-allow-origin': origin, 'access-control-expose-headers': 'Retry-After', 'access-control-allow-headers': 'authorization, content-type, x-mtx-timestamp, x-mtx-nonce, x-mtx-signature', 'access-control-allow-methods': 'GET, POST, OPTIONS', vary: 'Origin' } : {};
+}
+
+async function checkLimit(limiter: RequestRateLimiter, key: string, cors: HeadersInit) {
+  const delay = limiter.consumeWithDelay ? await limiter.consumeWithDelay(key) : (await limiter.consume(key) ? 0 : 1000);
+  return delay > 0 ? json({ error: 'Too many requests' }, 429, { ...cors, 'retry-after': String(Math.ceil(delay / 1000)) }) : null;
 }
 
 export function validateEnv(env: Env): void {
@@ -68,7 +73,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
   try { validateEnv(env); } catch { return json({ error: 'Server configuration error' }, 500, cors); }
   const origin = request.headers.get('origin');
   if (origin && origin !== env.APP_ORIGIN) return json({ error: 'Forbidden origin' }, 403);
-  if (!await ipRateLimiter.consume(`ip:${clientIp(request)}`)) return json({ error: 'Too many requests' }, 429, cors);
+  const ipLimited = await checkLimit(ipRateLimiter, `ip:${clientIp(request)}`, cors);
+  if (ipLimited) return ipLimited;
   const url = new URL(request.url);
   try {
     if (url.pathname === '/api/admin/auth' && request.method === 'POST') {
@@ -142,7 +148,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       try { claims = await verifyJwt(authorization.slice(7), env.JWT_SECRET); }
       catch { return json({ error: 'Unauthorized' }, 401, cors); }
       emptyBodySchema.parse(await request.json());
-      if (!await playerRateLimiter.consume(`user:${claims.sub}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const limited = await checkLimit(playerRateLimiter, `user:${claims.sub}`, cors);
+      if (limited) return limited;
       const nowSeconds = Math.floor(Date.now() / 1_000);
       const token = await issueJwt(claims.user, env.JWT_SECRET, PLAYER_TOKEN_SECONDS, nowSeconds, claims.sessionStartedAt ?? claims.iat);
       const sessionKey = await deriveSessionKey({ sub: claims.sub, iat: nowSeconds }, env.JWT_SECRET);
@@ -153,7 +160,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const authorization = request.headers.get('authorization');
       if (!authorization?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401, cors);
       const claims = await verifyJwt(authorization.slice(7), env.JWT_SECRET);
-      if (!await playerRateLimiter.consume(`user:${claims.sub}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const limited = await checkLimit(playerRateLimiter, `user:${claims.sub}`, cors);
+      if (limited) return limited;
       return json({ user: claims.user }, 200, cors);
     }
     if (url.pathname === '/api/game/state' && request.method === 'GET') {
@@ -161,7 +169,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const player = await authenticatedPlayer(request, env);
       if (!player) return json({ error: 'Unauthorized' }, 401, cors);
       const userId = player.sub;
-      if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const limited = await checkLimit(playerRateLimiter, `user:${userId}`, cors);
+      if (limited) return limited;
       const now = Date.now();
       const result = await gameStorage.creditOffline(userId, now, await loadEconomyConfig(env));
       await socialStorage.recordScore(userId, playerName(player), result.state.coins, now, result.state.activity);
@@ -177,7 +186,8 @@ export async function handleRequestWithStorage(request: Request, env: Env, gameS
       const player = await authenticatedPlayer(request, env);
       if (!player) return json({ error: 'Unauthorized' }, 401, cors);
       const userId = player.sub;
-      if (!await playerRateLimiter.consume(`user:${userId}`)) return json({ error: 'Too many requests' }, 429, cors);
+      const limited = await checkLimit(playerRateLimiter, `user:${userId}`, cors);
+      if (limited) return limited;
       const batch = tapBatchSchema.parse(await request.json());
       const now = Date.now();
       const result = await gameStorage.applyTaps(userId, batch, now);

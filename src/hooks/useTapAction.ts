@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { syncTapBatch } from '../services/gameApiService';
+import { syncTapBatch, tapRetryWindow } from '../services/gameApiService';
 import { withPendingTaps } from '../services/gameService';
 import { hapticTap } from '../services/telegramService';
 import { playTapSound } from '../services/preferencesService';
@@ -19,7 +19,7 @@ export function useTapAction(): () => void {
   const syncing = useRef(false);
 
   const flush = useCallback(async () => {
-    if (useAppStore.getState().authStatus !== 'authenticated' || !userId || syncing.current) return;
+    if (useAppStore.getState().authStatus !== 'authenticated' || !userId || syncing.current || tapRetryWindow.remaining(userId) > 0) return;
     sealActiveBatch(localStorage, userId);
     const batch = nextTapBatch(localStorage, userId);
     if (!batch) return;
