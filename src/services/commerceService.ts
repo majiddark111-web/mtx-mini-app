@@ -28,7 +28,7 @@ export async function fetchPendingPayments(): Promise<{ intents: TonPaymentInten
   if (!Array.isArray(value.intents) || !value.intents.every(validPaymentIntent)) throw new Error('Unable to recover payment orders');
   return { intents: value.intents, hasMore: value.hasMore === true };
 }
-export async function confirmTonPayment(intent: TonPaymentIntent): Promise<'pending' | 'confirmed'> {
-  const response = await httpClient.post('/api/wallet/payments/confirm', { provider: 'ton', transactionId: intent.transactionId, amount: intent.amountNano / 1_000_000_000, asset: 'TON' });
+export async function confirmTonPayment(intent: TonPaymentIntent): Promise<'pending' | 'confirmed' | 'retry'> {
+  const response = await httpClient.post('/api/wallet/payments/confirm', { provider: 'ton', transactionId: intent.transactionId, amount: intent.amountNano / 1_000_000_000, asset: 'TON' }, { validateStatus: status => (status >= 200 && status < 300) || status === 409 });
   return paymentResult(response.status, response.data, intent.transactionId);
 }

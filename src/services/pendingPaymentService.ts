@@ -41,8 +41,10 @@ export async function preparePaymentOrder(storage: PaymentStorage, userId: strin
   finishPaymentRequest(storage, userId);
   return intent;
 }
-export function paymentResult(status: number, data: unknown, expectedId: string): 'pending' | 'confirmed' {
-  const body = data as { status?: string; transaction?: { transactionId?: string; status?: string } } | null;
+export function paymentResult(status: number, data: unknown, expectedId: string): 'pending' | 'confirmed' | 'retry' {
+  const body = data as { error?: string; status?: string; transaction?: { transactionId?: string; status?: string } } | null;
+  if (status === 409 && body?.error === 'Conflict') return 'retry';
+  if (status === 409 && typeof body?.error === 'string') throw new Error(body.error);
   if (status === 202 && body?.status === 'pending') return 'pending';
   if (status === 200 && body?.transaction?.transactionId === expectedId && body.transaction.status === 'confirmed') return 'confirmed';
   throw new Error('Payment was not confirmed. Keep the order and check again; do not pay again.');

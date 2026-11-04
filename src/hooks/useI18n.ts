@@ -45,6 +45,7 @@ Object.assign(ar, { Global: 'العالمي', Friends: 'الأصدقاء', Weekl
 Object.assign(ar, { 'Ranked by current MTX balance': 'الترتيب حسب رصيد MTX الحالي', 'Ranked by gameplay earnings in this UTC period; purchases and rewards excluded.': 'الترتيب حسب أرباح اللعب خلال هذه الفترة بتوقيت UTC؛ دون المشتريات والمكافآت.' });
 
 Object.assign(ar, {
+  'Your order is saved. Select Check payment again; do not pay again.': 'طلبك محفوظ. اضغط على Check payment مرة أخرى؛ لا تدفع مجددًا.',
   'Reopen MTX in Telegram to sign in before claiming rewards.': 'أعد فتح MTX في تيليجرام لتسجيل الدخول قبل استلام المكافآت.',
   'Loading reward status…': 'جارٍ تحميل حالة المكافآت…',
   'The answer is incorrect. Check it and try again.': 'الإجابة غير صحيحة. تحقّق منها وحاول مجددًا.',

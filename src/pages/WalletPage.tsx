@@ -58,7 +58,9 @@ function ConnectedWalletPage() {
     try {
       const result = await confirmTonPayment(intent);
       if (!currentAccount()) return;
-      if (result === 'confirmed') {
+      if (result === 'retry') {
+        setMessage(text('Your order is saved. Select Check payment again; do not pay again.', 'سفارش شما محفوظ است. دوباره «بررسی پرداخت» را بزنید؛ نیازی به پرداخت مجدد نیست.'));
+      } else if (result === 'confirmed') {
         removeConfirmedPayment(localStorage, userId, intent.transactionId);
         setOrders((items) => items.filter((item) => item.transactionId !== intent.transactionId));
         setMessage(text('Payment confirmed by the server. The same order is never credited twice.', 'پرداخت توسط سرور تأیید شد. همین سفارش دوباره امتیاز نمی‌گیرد.'));

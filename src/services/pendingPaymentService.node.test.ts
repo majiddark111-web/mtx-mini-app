@@ -64,6 +64,10 @@ describe('durable client payment recovery', () => {
     assert.throws(() => paymentRequest(unavailable, '42', 'wallet'), /quota/);
   });
   it('requires explicit confirmation of this exact order, not just HTTP 200', () => {
+    assert.equal(paymentResult(409, { error: 'Conflict' }, order.transactionId), 'retry');
+    for (const error of ['Payment intent mismatch', 'Transaction already used', 'Request security check failed']) {
+      assert.throws(() => paymentResult(409, { error }, order.transactionId), { message: error });
+    }
     assert.equal(paymentResult(202, { status: 'pending' }, order.transactionId), 'pending');
     assert.equal(paymentResult(200, { transaction: { transactionId: order.transactionId, status: 'confirmed' } }, order.transactionId), 'confirmed');
     for (const status of ['failed', 'pending', 'refunded']) assert.throws(() => paymentResult(200, { transaction: { transactionId: order.transactionId, status } }, order.transactionId));
