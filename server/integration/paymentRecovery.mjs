@@ -6,6 +6,9 @@ import { runMigrations } from '../migrations.mjs';
 import { createIsolatedScope } from './isolatedInfrastructure.mjs';
 import { PostgresCommercePersistence } from '../src/commercePersistence.ts';
 import { createGameState } from '../src/gameEngine.ts';
+import { verifyTapPaymentOverlap } from './tapPaymentOverlap.mjs';
+import { runMultiUserHttp } from './multiUserHttp.mjs';
+import { verifySharedIpRetry } from './sharedIpRetry.mjs';
 
 const connectionString = process.env.MTX_PAYMENT_TEST_DATABASE_URL;
 if (!connectionString) throw new Error('LOCAL_PAYMENT_TEST_DATABASE_REQUIRED');
@@ -68,7 +71,53 @@ try {
   assert.equal((await scope.postgres.query('SELECT state FROM mtx_game_state WHERE user_id=$1', [intent.userId])).rows[0].state.coins, 100);
   assert.equal(await persistence.payment(second.transactionId), undefined);
   assert.equal((await persistence.pendingPaymentIntents(intent.userId))[0].transactionId, second.transactionId);
-  console.log('PAYMENT_RECOVERY_POSTGRES_PASS: migration, concurrent create, reconnect, expired recovery, ownership, frozen quote, 16 concurrent confirmations, rollback');
+  // Two different payments may read the same balance version. The loser must
+  // roll back completely and remain recoverable with a fresh state snapshot.
+  const third = { ...intent, transactionId: 'ton_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', idempotencyKey: 'test-key-0003' };
+  await persistence.savePaymentIntent(third);
+  const competingRecords = [second, third].map((order) => ({ ...record, transactionId: order.transactionId }));
+  const competing = await Promise.allSettled(competingRecords.map((payment) => persistence.commitPayment(payment, credited.version, { ...credited, coins: 200, version: credited.version + 1 })));
+  assert.equal(competing.filter((result) => result.status === 'fulfilled').length, 1);
+  const rejectedIndex = competing.findIndex((result) => result.status === 'rejected');
+  assert.notEqual(rejectedIndex, -1);
+  assert.equal(competing[rejectedIndex].reason.message, 'STATE_VERSION_CONFLICT');
+  const readState = async (userId) => (await scope.postgres.query('SELECT state FROM mtx_game_state WHERE user_id=$1', [userId])).rows[0].state;
+  const afterConflict = await readState(intent.userId);
+  assert.equal(afterConflict.coins, 200);
+  assert.equal(await persistence.payment(competingRecords[rejectedIndex].transactionId), undefined);
+  assert.equal((await persistence.pendingPaymentIntents(intent.userId)).length, 1);
+  assert.equal((await persistence.commitPayment(competingRecords[rejectedIndex], afterConflict.version, { ...afterConflict, coins: 300, version: afterConflict.version + 1 })).duplicate, false);
+  assert.equal((await readState(intent.userId)).coins, 300);
+  assert.equal((await persistence.paymentHistory(intent.userId)).length, 3);
+  assert.equal((await persistence.pendingPaymentIntents(intent.userId)).length, 0);
+  for (const payment of competingRecords) assert.equal((await persistence.commitPayment(payment, credited.version, credited)).duplicate, true);
+  assert.equal((await readState(intent.userId)).coins, 300, 'duplicate retry must not overwrite a newer balance');
+
+  // The same idempotency key is legal for another user, without sharing history.
+  const otherUser = 'other-payment-test-user';
+  const otherIntent = await persistence.savePaymentIntent({ ...intent, userId: otherUser, transactionId: 'ton_dddddddddddddddddddddddddddddddd' });
+  assert.notEqual(otherIntent.transactionId, saved.transactionId);
+  const otherState = createGameState(otherUser, now);
+  await scope.postgres.query('INSERT INTO mtx_game_state (user_id, state) VALUES ($1,$2)', [otherUser, JSON.stringify(otherState)]);
+  const otherPayment = { ...record, userId: otherUser, transactionId: otherIntent.transactionId };
+  await persistence.commitPayment(otherPayment, otherState.version, { ...otherState, coins: 100, version: otherState.version + 1 });
+  assert.equal((await readState(otherUser)).coins, 100);
+  assert.equal((await readState(intent.userId)).coins, 300);
+  assert.deepEqual((await persistence.paymentHistory(otherUser)).map((payment) => payment.transactionId), [otherIntent.transactionId]);
+  assert.ok((await persistence.paymentHistory(intent.userId)).every((payment) => payment.userId === intent.userId));
+
+  // Verify committed balances/history survive reconnect, not merely hot memory.
+  await pool.end(); pool = new pg.Pool({ connectionString, max: 8, connectionTimeoutMillis: 5000 });
+  persistence = new PostgresCommercePersistence(scope.postgres);
+  assert.equal((await readState(intent.userId)).coins, 300);
+  assert.equal((await readState(otherUser)).coins, 100);
+  assert.equal((await persistence.paymentHistory(intent.userId)).length, 3);
+  assert.equal((await persistence.paymentHistory(otherUser)).length, 1);
+  await verifyTapPaymentOverlap(scope.postgres);
+  console.log('TAP_PAYMENT_API_OVERLAP_PASS: conflict, recovery, replay, 102 MTX');
+  await runMultiUserHttp(scope.postgres);
+  await verifySharedIpRetry(scope.postgres);
+  console.log('PAYMENT_RECOVERY_POSTGRES_PASS: migration, concurrent create, reconnect, expired recovery, ownership, frozen quote, 16 concurrent confirmations, rollback, distinct-payment conflict/retry, cross-user histories, durable balances');
 } finally {
   try { if (scope) { await scope.close(); console.log('PAYMENT_RECOVERY_SCHEMA_CLEANED'); } }
   finally { await pool.end(); }
