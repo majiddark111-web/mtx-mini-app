@@ -342,3 +342,116 @@ This change contains test harnesses, test commands, and this evidence report
 only. No production code/configuration, user data, push, or deployment is
 included. The two previously modified project-status/reward documents remain
 outside the commit.
+
+### Redis transport recovery acceptance prepared (2026-11-09; pending)
+
+Owner confirmed deployed commit `2464d20` is Live and the tap/reopen/history
+smoke checks passed. Added a separate `test:redis:recovery` local harness.
+It requires the existing explicit write opt-in and dedicated 127.0.0.1:56379
+Redis URL; it never reads the production REDIS_URL. A test-only loopback TCP
+gate destroys established sockets and rejects reconnects, then restores
+transport without stopping Redis or modifying its configuration.
+
+The new scenario uses real Redis/HTTP, synthetic signed sessions, six users,
+in-memory gameplay, UUID-scoped Redis keys and the existing outbox helpers.
+It covers two outages: before credit and after server credit before local
+acknowledgement. Queued HTTP requests may wait during the outage because the
+test mirrors nodeInfrastructure.mjs's reconnect backoff and default offline
+queue. Recovery must credit each two-tap batch once (12 coins total), then
+retry the same batches as duplicates and empty the local queues. This does
+not establish bounded production HTTP failure latency, Redis restart/data-loss
+safety, PostgreSQL durability, browser recovery, or live Valkey compatibility.
+It does not inject a failure partway through a Redis command.
+
+All 358 default-suite tests (including four gate/configuration tests) and
+scoped ESLint passed. The real Redis
+scenario stopped at `phase=redis-connect code=ECONNREFUSED`; the owner
+confirmed the local Redis process is stopped. Full recovery acceptance remains
+pending. Cleanup uses a separate direct local connection, destroys the test
+client before deleting only recorded keys, and verifies absence. No production
+code/configuration changes, push, deploy, or live data writes were made.
+
+After the owner started the local Redis process, the agent retried with network
+permission and received `phase=redis-connect code=ETIMEDOUT` (2026-11-09).
+The connection failed before the gate, HTTP listener, or scenario writes were
+started. This is an agent-to-local-Redis reachability limitation, not a passed
+or failed recovery assertion. An owner-executed PowerShell run is still needed.
+
+The owner subsequently reported `phase=configuration code=CHECK_FAILED` after
+shell/path setup difficulties. Added `scripts/run-local-redis-recovery.cmd`:
+it scopes the two fixed local-test variables with SETLOCAL and resolves both
+Node and the scenario relative to the launcher, independently of the caller's
+working directory. Configuration failures now expose only two allowlisted,
+non-secret reason codes. Running the launcher from C:\Windows\System32 reached
+`phase=redis-connect code=ETIMEDOUT` in the agent environment, confirming the
+path/configuration problem was bypassed, not that recovery passed. No live
+Redis settings were changed; full acceptance remains pending.
+
+The owner's launcher run then reached the real recovery scenario and reported
+`phase=reconnect-0 code=ERR_ASSERTION`. This is a failing acceptance run, not
+a PASS. The original generic error did not identify which assertion failed.
+Added fixed-field per-actor summaries (HTTP status, allowlisted error label,
+duplicate/balance/owner checks, stored coins and pending count) and precise
+assertion phase names. No request headers, credentials, raw errors or URLs are
+printed. Expectations remain unchanged pending evidence; no production fix or
+successful recovery is claimed.
+
+### Recovery assertion diagnosis and retry coverage (2026-11-09)
+
+Owner evidence: all six round-0 requests returned HTTP 500/Internal server
+error, storedCoins=0, pendingTaps=2, with redisReady=true at observation time.
+The failed assertion incorrectly required the original in-outage HTTP requests
+to become successful after reconnection. Inspection of the installed node-redis
+5.12.1 code shows socket errors reject waiting commands; recovery does not
+retroactively change an HTTP 500. This is consistent with the evidence, but the
+specific underlying Redis exception was not exposed in that run.
+
+Revised acceptance separates outage responses from fresh, newly signed retries.
+An outage 500 requires an observed Redis command failure, the exact generic
+error body, unchanged per-user balance and an intact original outbox. Other
+unexpected statuses still fail. Fresh retries after transport recovery MUST all
+return 200, use new nonces, report correct duplicate flags and ownership, keep
+each balance at exactly two coins, and encounter no new Redis command failures.
+Round two continues to exercise previously credited but unacknowledged batches.
+This is a documented correction to the harness expectation, not a production fix
+or treating HTTP 500 alone as a successful recovery.
+
+Added an optional `MTX_TAP_UI_FAULT=http-500` fixture to the existing real-Chrome
+UI test. It passed independently: actual hook/outbox/client code preserved and
+retried the same batch after a mocked HTTP 500, with fresh nonces, two coins
+total and an empty queue. This browser test intercepts HTTP and does not use
+Redis. Four gate/config tests and recovery-harness lint passed. The agent's
+real-Redis retry again timed out at connection setup. The revised real-Redis
+acceptance remains pending an owner execution; no push/deployment was made.
+
+### Redis recovery acceptance result (2026-11-09; owner-executed PASS)
+
+Supersedes the pending recovery status above. The owner supplied the complete
+two-round output and the final marker:
+
+`MTX_LOCAL_REDIS_RECOVERY_PASS: 2 TCP outages, 6 users, queued taps preserved, automatic reconnect, duplicate credit prevented, 12 coins total, cleanup`
+
+In round zero, six Redis command failures resulted in six HTTP 500 responses,
+zero coins per actor and two pending taps per actor. Fresh signed retries after
+reconnection all returned HTTP 200, duplicate=false and two coins. In round
+one, another six Redis command failures left the credited two coins and pending
+batches intact. Fresh retries all returned HTTP 200, duplicate=true and still
+two coins per actor. The final PASS includes empty queues and verified deletion
+of the run's recorded Redis keys.
+
+This is owner-supplied execution evidence, not a successful agent-run Redis
+test. Browser fault tests are separate, agent-executed tests with mocked HTTP.
+Limitations remain: synthetic sessions, in-memory gameplay, local Redis rather
+than live Valkey, no PostgreSQL durability or restart/data-loss test, no
+capacity claim and no assertion of bounded outage response latency. The user
+was advised they may stop the dedicated foreground Redis with Ctrl+C.
+
+The change is test tooling and evidence only; no production behavior or
+configuration was changed. The unrelated dirty daily-reward and project-status
+documents are excluded from the commit. No push/deploy is authorized in this
+commit step.
+
+Final agent-run pre-commit checks (2026-11-09): 358/358 default tests passed
+(24 suites), scoped ESLint passed, and both Chrome fixtures (`lost-reply` and
+`http-500`) passed again. These checks do not rerun the owner-only real Redis
+scenario and do not imply a full repository lint pass.

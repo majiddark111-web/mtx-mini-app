@@ -12,6 +12,8 @@ process.chdir(fileURLToPath(new URL('../', import.meta.url)));
 const pw = process.env.PLAYWRIGHT_MODULE_PATH;
 const { chromium } = await import(pw ? pathToFileURL(resolve(pw)).href : 'playwright');
 const ui = 'http://127.0.0.1:4187', api = 'http://127.0.0.1:4188';
+const fault = process.env.MTX_TAP_UI_FAULT ?? 'lost-reply';
+assert.ok(['lost-reply', 'http-500'].includes(fault), 'Unsupported UI fault fixture');
 const entry = `
 import React from 'react';
 import {createRoot} from 'react-dom/client';
@@ -48,6 +50,7 @@ try {
     const batch=req.postDataJSON(), at=Number(req.headers()['x-mtx-timestamp']);
     calls.push({batch,at,nonce:req.headers()['x-mtx-nonce']});
     if(calls.length===1)return route.fulfill({status:429,headers:{...headers,'retry-after':'8'},json:{error:'Too many requests'}});
+    if(calls.length===2 && fault==='http-500')return route.fulfill({status:500,headers,json:{error:'Internal server error'}});
     const duplicate=seen.has(batch.batchId);
     if(!duplicate){seen.add(batch.batchId);coins+=batch.taps;}
     // Commit the first retry but lose its reply. The client cannot acknowledge it.
@@ -83,5 +86,5 @@ try {
   assert.equal(seen.size,2); assert.equal(coins,2);
   await page.waitForFunction(()=>document.querySelector('.score')?.textContent==='2 MTX');
   assert.deepEqual(errors,[]);
-  console.log('TAP_RETRY_UI_PASS: reload + reconnect + timer respected 429; lost reply retried with original batch; 2 taps credited once each');
+  console.log(`TAP_RETRY_UI_PASS: reload + reconnect + timer respected 429; ${fault} retried with original batch; 2 taps credited once each`);
 } finally { await browser.close(); }

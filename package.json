@@ -25,6 +25,7 @@
     "test:integration:isolated": "node --experimental-strip-types server/integration/isolated.mjs",
     "test:redis:local": "node --experimental-strip-types server/integration/redisRateLimit.mjs",
     "test:redis:http": "node --experimental-strip-types server/integration/redisHttp.mjs",
+    "test:redis:recovery": "node --experimental-strip-types server/integration/redisRecovery.mjs",
     "test:load:isolated": "node --experimental-strip-types server/integration/loadIsolated.mjs",
     "server:check": "tsc -p server/tsconfig.json",
     "check": "tsc && tsc -p server/tsconfig.json"
