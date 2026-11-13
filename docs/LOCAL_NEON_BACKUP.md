@@ -3,8 +3,9 @@
 ## Actual state
 
 **November 14 permission diagnosis and schedule approval:** the user explicitly
-approved daily execution at 21:00 Asia/Tehran. No scheduler has been created or
-activated yet: the current managed execution environment fails the private-folder
+approved daily execution at 21:00 Asia/Tehran. The app automation `mtx` was created
+in PAUSED state on November 14 and its card was opened for review. It has not
+been activated: the current managed execution environment fails the private-folder
 precondition. A disposable empty directory probe showed that Set-Acl returned,
 but the observed ACL retained inheritance and additional workspace identities.
 The probe was empty and removed; no production secret/data was used in it.
@@ -55,8 +56,10 @@ The helpers are `scripts/rehearse-local-backup.ps1` (private decryption/cleanup)
 and `scripts/rehearse-local-backup.mjs` (isolated restore and verification).
 No remote DB URL or source credentials are accepted by the restore helper; it
 does not connect to Neon. Use only trusted archives, since restoration executes
-their SQL inside the temporary instance. No recurring task is created or active;
-explicit daily-time approval and scheduler permissions remain pending.
+their SQL inside the temporary instance. The recurring task `mtx` exists but is
+PAUSED; daily-time approval is recorded. Successful execution with proper private
+folder permissions is still required before activation. No scheduled run or new
+live backup was performed during scheduler creation.
 
 ### Historical preparation state (superseded by the update above)
 
