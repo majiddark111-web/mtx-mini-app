@@ -56,6 +56,8 @@ Object.assign(ar, {
   'Daily reward received.': 'تم استلام المكافأة اليومية.',
 });
 
+Object.assign(ar, { 'Balance': 'الرصيد', 'Player': 'اللاعب', 'per tap': 'لكل نقرة', 'Sign-in status': 'حالة تسجيل الدخول' });
+
 export function useI18n() {
   const { language } = usePreferences();
   const fa = language === 'fa'; const arabic = language === 'ar';

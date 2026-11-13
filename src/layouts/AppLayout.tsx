@@ -14,5 +14,5 @@ export function AppLayout() {
   useEffect(() => initializePreferences(), []);
   useTelegramUser(); useTelegramNavigation(); useGamePersistence(); useGameSync(); useInventorySync();
   const location = useLocation();
-  return <div className="app-shell">{!location.pathname.startsWith('/admin') && <PlayerSessionNotice />}<Outlet />{location.pathname !== '/game' && !location.pathname.startsWith('/admin') && <><NotificationBell /><BottomNavigation /></>}</div>;
+  return <div className="app-shell">{!location.pathname.startsWith('/admin') && <PlayerSessionNotice />}<Outlet />{!location.pathname.startsWith('/admin') && <>{location.pathname !== '/game' && <NotificationBell />}<BottomNavigation /></>}</div>;
 }

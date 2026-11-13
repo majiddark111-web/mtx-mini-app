@@ -1,0 +1,43 @@
+.game-screen.robot-game { height: auto; min-height: calc(100dvh - 90px); overflow: visible; color: #edf5ff; background: radial-gradient(ellipse at 50% 35%, #073368, #001027 65%); }
+.robot-game .game-content { height: auto; overflow: visible; padding: 0 16px 24px; gap: 12px; max-width: 540px; margin: auto; }
+.robot-header { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: max(8px, env(safe-area-inset-top)) 4px 8px; border-bottom: 1px solid #1379b3; }
+.robot-header a { color: #c9e6ff; display: flex; padding: 8px; text-decoration: none; }
+.robot-header .robot-wordmark { font-size: 26px; font-weight: 850; gap: 7px; color: white; direction: ltr; }
+.robot-wordmark span { color: #42d8ff; }
+.robot-game .profile-row { border: 1px solid #167fb1; border-radius: 24px; background: #04203d; padding: 10px 16px; min-width: 0; }
+.robot-game .profile-row > span { min-width: 0; overflow-wrap: anywhere; font-weight: 650; }
+.robot-game .profile-row img { width: 28px; height: 28px; }
+.robot-game .profile-row svg { flex-shrink: 0; color: #a8cde9; }
+.robot-game .profile-row i { width: 8px; height: 8px; border-radius: 50%; background: #8594a6; flex-shrink: 0; }
+.robot-game .profile-row .player-connected { background: #52e6a2; }
+.robot-game .tap-zone { width: 100%; margin: 0; gap: 8px; }
+.balance-label { text-transform: uppercase; letter-spacing: .12em; color: #99c5ec; font-size: 12px; }
+.robot-game .score { color: #eafaff; font-size: clamp(25px, 8vw, 44px); line-height: 1.25; text-align: center; max-width: 100%; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.robot-stage { position: relative; isolation: isolate; width: calc(100% + 32px); height: clamp(260px, 37svh, 420px); }
+.robot-scene { width: 100%; height: 100%; object-fit: contain; object-position: center top; position: absolute; inset: 0; pointer-events: none; user-select: none; mask-image: radial-gradient(ellipse at center, black 50%, transparent 75%); }
+.robot-game .coin-button { position: absolute; bottom: 0; left: 50%; translate: -50% 0; width: 43%; height: auto; aspect-ratio: 1; border: 6px solid #f6c846; background: linear-gradient(140deg, #fff4b0, #c2850a 45%, #ffda53 80%); padding: 5px; box-shadow: 0 6px 0 #81500a, 0 0 24px #ffc64245; }
+.robot-coin-face { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 40% 25%, #0954bb, #001848 68%); border: 3px solid #61eaff; box-shadow: inset 0 0 14px #009fff; color: white; font-size: clamp(30px, 10vw, 55px); font-weight: 900; font-style: italic; }
+.robot-game .coin-button.coin-aurora .robot-coin-face { filter: hue-rotate(60deg); }
+.robot-game .coin-button:focus-visible { outline: 3px solid white; outline-offset: 7px; }
+.robot-game .tap-power { margin-top: 8px; font-size: 16px; font-weight: 750; }
+.robot-game .profit-rate { color: #9ecaf0; border: 1px solid #176796; padding: 4px 20px; border-radius: 20px; font-weight: 500; }
+.robot-energy { width: 100%; border: 1px solid #167fb1; border-radius: 18px; background: #041b33; padding: 14px; margin-top: 6px; }
+.robot-energy-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; font-size: 14px; }
+.robot-energy-label > span { display: flex; align-items: center; gap: 6px; font-weight: 750; }
+.robot-energy-label svg { color: #ffdc71; width: 18px; height: 18px; }
+.robot-game .energy-track { width: 100%; height: 12px; border: 1px solid #dfba58; background: #001023; box-shadow: 0 0 10px #14dcff40; }
+.robot-game .energy-track > div { background: linear-gradient(0deg, #008cbd, #44efff); animation: none; }
+.robot-game .game-actions { max-width: none; background: none; border: 0; padding: 0; gap: 12px; }
+.robot-game .game-actions button { border: 1px solid #00b9ef; border-radius: 18px; background: linear-gradient(140deg, #084773, #051a38); flex-direction: row; justify-content: center; align-items: center; gap: 12px; min-height: 64px; color: #ffdd7a; }
+.robot-game .game-actions span { font-size: 18px; font-weight: 750; }
+.robot-game .player-diagnostics { margin: 4px 0; border-color: #265472; background: #05182d; font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .robot-game *, .robot-game *::before, .robot-game *::after { animation: none !important; transition: none !important; } }
+.robot-game .modal-card { background: #041b33; border-color: #167fb1; color: #edf5ff; }
+.robot-game .modal-card .muted { color: #b1c9e0; }
+.robot-game .modal-card .button.ghost { color: #e3f3ff; border-color: #4184ae; }
+.robot-game .game-actions button:hover { background: #094977; }
+:root[data-low-power="true"] .robot-game .coin-button,
+:root[data-low-power="true"] .robot-game .robot-coin-face { box-shadow: none; }
+@media (max-height: 600px) and (orientation: landscape) {
+  .robot-stage { max-width: 360px; height: 300px; }
+}
