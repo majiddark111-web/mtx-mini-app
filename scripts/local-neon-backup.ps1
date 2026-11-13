@@ -194,6 +194,7 @@ try {
                     PGPASSWORD = $credential.GetNetworkCredential().Password
                     PGSSLMODE = 'verify-full'; PGSSLROOTCERT = $rootsPath; PGCHANNELBINDING = 'require'
                     PGCONNECT_TIMEOUT = '15'; PGAPPNAME = 'mtx-local-backup'
+                    PGTZ = 'UTC'
                     PGOPTIONS = '-c default_transaction_read_only=on -c statement_timeout=240000'
                 }
                 $source = Join-Path $work 'source.backup'

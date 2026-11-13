@@ -2,6 +2,50 @@
 
 ## Actual state
 
+**Update recorded 2026-11-14 — first real backup and restore passed.** The user
+ran Setup/Backup locally and reported PASS for
+`mtx-20261113T183700Z-d03a1c223dae45e3b4b91458bcdbb717.mtxdpapi`.
+That exact archive was independently decrypted and restored into a fresh
+SCRAM-password-protected, loopback-only PostgreSQL 18 cluster on this laptop.
+All 20 tables matched the archive's complete COPY-row multisets (column lists,
+counts and SHA-256 of sorted rows), six migration checksums matched repository
+files, and the daily archive trigger was enabled. The successful rehearsal's
+cluster was stopped and its plaintext/cluster directory removed by the wrapper.
+This compares the snapshot with its restoration, not with later live Neon writes.
+Encrypted archive SHA-256:
+`2BC6204A5FF1D36CA393EC674306B48C056DDE1752C1AF5B4C9B5F2102EBB998`.
+
+Two initial attempts restored successfully but failed serialized row comparison.
+The local database default timezone differed from the source. Repeating the
+re-dump with `PGTZ=UTC` produced identical fingerprints without changing rows or
+relaxing the comparison. New backups now pin UTC too.
+
+The two earlier attempts retained private plaintext/cluster artifacts under
+`.build-verification/restore-drill-5bea9a2c7cde4f2398024176de7d1d12` and
+`.build-verification/restore-drill-b6f272ac15e04085a6b5efc130a465ec`.
+Their runners stopped the clusters before reporting comparison failure. Cleanup
+on November 14 was blocked by approval policy before execution. Do not claim
+those directories were deleted; obtain permission, recheck pg_ctl status and
+validated exact paths, then remove only those temporary copies. Original encrypted
+backups must be retained. This is not secure disk erasure. A follow-up grant for
+those exact directories succeeded, but command approval still rejected cleanup
+before execution. No alternate deletion mechanism was attempted.
+
+November 14 checks: changed Node helper ESLint passed. Re-running the backup
+SelfTest in the current managed environment stopped at PRIVATE_PERMISSIONS_REQUIRED;
+its strict ACL requirement was not relaxed. That is not a new live-backup failure
+and does not replace the earlier successful real restore result. Investigate
+effective ACLs in the execution environment before enabling unattended operation.
+
+The helpers are `scripts/rehearse-local-backup.ps1` (private decryption/cleanup)
+and `scripts/rehearse-local-backup.mjs` (isolated restore and verification).
+No remote DB URL or source credentials are accepted by the restore helper; it
+does not connect to Neon. Use only trusted archives, since restoration executes
+their SQL inside the temporary instance. No recurring task is created or active;
+explicit daily-time approval and scheduler permissions remain pending.
+
+### Historical preparation state (superseded by the update above)
+
 The user selected laptop-only storage. The helper is implemented and tested with
 synthetic data. **No live Neon backup has been made by this helper, credentials
 have not been saved, and no recurring task was created or activated.**
