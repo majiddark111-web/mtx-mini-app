@@ -23,6 +23,9 @@ function New-PrivateDirectory([string]$Path) {
         $acl.AddAccessRule($rule)
     }
     Set-Acl -LiteralPath $Path -AclObject $acl
+    # Managed execution can leave inherited ACLs unchanged. Fail before any
+    # credential, plaintext dump or decrypted archive is written here.
+    Assert-PrivateDirectory $Path
 }
 function Assert-PrivateDirectory([string]$Path) {
     $item = Get-Item -LiteralPath $Path

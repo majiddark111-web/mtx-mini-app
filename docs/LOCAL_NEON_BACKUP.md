@@ -2,6 +2,20 @@
 
 ## Actual state
 
+**November 14 permission diagnosis and schedule approval:** the user explicitly
+approved daily execution at 21:00 Asia/Tehran. No scheduler has been created or
+activated yet: the current managed execution environment fails the private-folder
+precondition. A disposable empty directory probe showed that Set-Acl returned,
+but the observed ACL retained inheritance and additional workspace identities.
+The probe was empty and removed; no production secret/data was used in it.
+Read-only ACL inspection confirmed that the actual AppData backup root and the
+two retained old rehearsal directories are inheritance-protected with only the
+current user and SYSTEM allowed. Do not confuse this with the failed new-directory
+probe. New-PrivateDirectory now verifies the resulting ACL before callers may
+write anything, and the restore wrapper checks it before decrypting live data.
+The security check must not be relaxed or the scheduler switched as a workaround.
+Resolve execution permission behavior and re-test before activating automation.
+
 **Update recorded 2026-11-14 — first real backup and restore passed.** The user
 ran Setup/Backup locally and reported PASS for
 `mtx-20261113T183700Z-d03a1c223dae45e3b4b91458bcdbb717.mtxdpapi`.

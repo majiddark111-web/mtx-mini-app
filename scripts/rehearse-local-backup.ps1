@@ -19,6 +19,12 @@ foreach ($sid in @([Security.Principal.WindowsIdentity]::GetCurrent().User, [Sec
     $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
 }
 Set-Acl -LiteralPath $work -AclObject $acl
+$actualAcl = Get-Acl -LiteralPath $work
+$allowedSids = @([Security.Principal.WindowsIdentity]::GetCurrent().User.Value, 'S-1-5-18')
+if (-not $actualAcl.AreAccessRulesProtected) { throw 'PRIVATE_PERMISSIONS_REQUIRED' }
+foreach ($rule in $actualAcl.Access) {
+    if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin $allowedSids) { throw 'PRIVATE_PERMISSIONS_REQUIRED' }
+}
 [IO.File]::WriteAllText((Join-Path $work 'private-directory.marker'), 'MTX_PRIVATE_RESTORE')
 $plain = [Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($source.FullName), [Text.Encoding]::UTF8.GetBytes('MTX local backup v1'), [Security.Cryptography.DataProtectionScope]::CurrentUser)
 try { [IO.File]::WriteAllBytes((Join-Path $work 'source.backup'), $plain) }
