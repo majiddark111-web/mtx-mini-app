@@ -1,0 +1,24 @@
+.app-shell:has(.robot-home) { background: #001027; }
+.page.robot-home { color: #edf5ff; background: radial-gradient(ellipse at top, #093867, #001027 70%); padding-bottom: 70px; }
+.home-brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 640px; margin: auto; padding: 22px 4px; border-bottom: 1px solid #176995; }
+.home-brand > span:first-child { font-size: 26px; font-weight: 850; }
+.home-brand > span:first-child span { color: #42d8ff; }
+.home-network { color: #ffe084; border: 1px solid #8d7739; background: #292817; border-radius: 20px; padding: 5px 12px; font-size: 12px; }
+.robot-home .home-hero { margin: 18px auto 0; padding: 0 20px 24px; overflow: hidden; background: linear-gradient(145deg, #073158, #02162e); border-color: #147db4; }
+.home-robot { display: block; height: 260px; margin: 0 -20px; pointer-events: none; }
+.home-robot img { width: 100%; height: 100%; object-fit: contain; mask-image: radial-gradient(ellipse, black 48%, transparent 75%); }
+.home-welcome { text-align: center; min-width: 0; }
+.robot-home .phase-badge { color: #b5eaff; background: #062c47; border-color: #176995; }
+.robot-home .home-hero h1 { font-size: clamp(28px, 7vw, 40px); line-height: 1.2; margin: 16px auto 12px; text-wrap: balance; }
+.robot-home .home-hero p { color: #a8cbe8; margin: 0; font-size: 14px; }
+.home-balance { display: block; color: #fff; font-size: clamp(22px, 6vw, 32px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.robot-home .launch { display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 52px; margin-top: 18px; background: linear-gradient(120deg, #ffe492, #ffcc40); color: #082448; }
+:root .robot-home .home-shortcuts a { color: #e7f4ff; background: linear-gradient(135deg, #073357, #031b35); border-color: #16618c; min-height: 76px; gap: 12px; }
+.robot-home .home-shortcuts svg { color: #ffdf7a; flex-shrink: 0; }
+.robot-home .home-shortcuts strong { overflow-wrap: anywhere; line-height: 1.5; }
+.robot-home a:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.robot-home .home-shortcuts a:hover { border-color: #52dcff; }
+@media (min-width: 600px) {
+  .robot-home .home-hero { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 16px; padding: 24px; }
+  .home-robot { height: 340px; margin: 0; }
+}

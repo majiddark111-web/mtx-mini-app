@@ -38,4 +38,22 @@ scroll naturally to energy/actions; navigation remains fixed. No new asset,
 animation, timer, or gameplay change is introduced.
 All six browser scenarios pass after this adjustment, with new assertions for
 painted image width, coin proportion, and face/upper-body clearance. This framing
-follow-up still needs deployment and a real Telegram visual check.
+follow-up was published as 546d020. On November 13 the user confirmed Live and
+accepted the enlarged artwork on their actual Telegram phone.
+
+## Home visual follow-up — local, 2026-11-13
+
+Home now reuses the optimized robot art, navy/cyan/gold palette and SVG icon
+language. Its real balance subscription, Play link and six feature destinations
+are retained. Testnet remains explicitly labelled; no asset dependency, timer,
+API request, wallet operation or backend change is added.
+The scoped Home styling does not restyle payment, admin or other feature pages.
+The branded Home surface remains navy in all theme modes, like Game.
+
+Run scripts/test-robot-design-ui.mjs --home for six isolated viewport/language/
+theme scenarios: WebP decode, displayed balance, six shortcuts, Play navigation,
+active Home navigation, keyboard focus, text color and horizontal overflow.
+These use synthetic balances and intercept all requests. The production bundle
+and Chromium Home-to-Wallet test passed; TON Connect remains excluded from cold
+Home. Frontend TypeScript and changed-code ESLint also passed. This new Home
+design still needs deployment and real Telegram acceptance.
