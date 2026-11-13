@@ -13,9 +13,9 @@
 .robot-game .tap-zone { width: 100%; margin: 0; gap: 8px; }
 .balance-label { text-transform: uppercase; letter-spacing: .12em; color: #99c5ec; font-size: 12px; }
 .robot-game .score { color: #eafaff; font-size: clamp(25px, 8vw, 44px); line-height: 1.25; text-align: center; max-width: 100%; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.robot-stage { position: relative; isolation: isolate; width: calc(100% + 32px); height: clamp(260px, 37svh, 420px); }
+.robot-stage { position: relative; isolation: isolate; width: calc(100% + 32px); aspect-ratio: 1122 / 1402; flex-shrink: 0; }
 .robot-scene { width: 100%; height: 100%; object-fit: contain; object-position: center top; position: absolute; inset: 0; pointer-events: none; user-select: none; mask-image: radial-gradient(ellipse at center, black 50%, transparent 75%); }
-.robot-game .coin-button { position: absolute; bottom: 0; left: 50%; translate: -50% 0; width: 43%; height: auto; aspect-ratio: 1; border: 6px solid #f6c846; background: linear-gradient(140deg, #fff4b0, #c2850a 45%, #ffda53 80%); padding: 5px; box-shadow: 0 6px 0 #81500a, 0 0 24px #ffc64245; }
+.robot-game .coin-button { position: absolute; bottom: 3%; left: 50%; translate: -50% 0; width: 40%; height: auto; aspect-ratio: 1; border: 6px solid #f6c846; background: linear-gradient(140deg, #fff4b0, #c2850a 45%, #ffda53 80%); padding: 5px; box-shadow: 0 6px 0 #81500a, 0 0 24px #ffc64245; }
 .robot-coin-face { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 40% 25%, #0954bb, #001848 68%); border: 3px solid #61eaff; box-shadow: inset 0 0 14px #009fff; color: white; font-size: clamp(30px, 10vw, 55px); font-weight: 900; font-style: italic; }
 .robot-game .coin-button.coin-aurora .robot-coin-face { filter: hue-rotate(60deg); }
 .robot-game .coin-button:focus-visible { outline: 3px solid white; outline-offset: 7px; }
@@ -39,5 +39,5 @@
 :root[data-low-power="true"] .robot-game .coin-button,
 :root[data-low-power="true"] .robot-game .robot-coin-face { box-shadow: none; }
 @media (max-height: 600px) and (orientation: landscape) {
-  .robot-stage { max-width: 360px; height: 300px; }
+  .robot-stage { max-width: 360px; }
 }

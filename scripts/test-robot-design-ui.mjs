@@ -53,6 +53,15 @@ try {
     await page.goto(origin+'/game');
     await page.locator('.robot-scene').evaluate(img=>img.decode());
     assert.ok(await page.locator('.robot-scene').evaluate(img=>img.currentSrc.endsWith('.webp')));
+    const framing=await page.locator('.robot-scene').evaluate(img=>{
+      const scene=img.getBoundingClientRect();
+      const coin=document.querySelector('.coin-button').getBoundingClientRect();
+      const paintedWidth=Math.min(scene.width,scene.height*img.naturalWidth/img.naturalHeight);
+      return {width:scene.width,paintedWidth,coinWidth:coin.width,coinTop:(coin.top-scene.top)/scene.height};
+    });
+    assert.ok(framing.paintedWidth>=framing.width*.98,'robot artwork must fill the stage width');
+    assert.ok(framing.coinWidth<=framing.paintedWidth*.42,'coin must not dominate the robot');
+    assert.ok(framing.coinTop>=.6,'coin must leave the face and upper body unobscured');
     assert.equal(await page.locator('.robot-nav a').count(),6);
     assert.equal(await page.locator('.robot-nav a.active').getAttribute('href'),'/game');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'horizontal overflow');

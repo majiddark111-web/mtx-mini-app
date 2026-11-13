@@ -27,9 +27,15 @@ orders or sending payment. Startup bundle/Chromium navigation tests passed: the
 wallet SDK remains excluded from cold Home. The pre-existing large Wallet bundle
 warning remains, unrelated to the robot scene.
 
-This is locally implemented and verified, not deployed. The decorative art now
-uses contain framing to avoid cropping the head and obscuring the face with the
-tap target. Existing tap/session/payment logic is unchanged.
-Before publication, review the final screenshots and perform an actual Telegram
-device check after deployment. The reviewed design is recorded in a dedicated
-local commit; push and deployment are separate release steps.
+The initial design (7212931) was deployed and the user confirmed the functional
+Telegram checks. Their phone screenshot showed that the viewport-height-limited
+stage made the artwork too narrow and the foreground coin disproportionately big.
+
+The follow-up uses the artwork's native aspect ratio for the stage, allowing the
+image to fill its width without cropping the head. The coin is 40% of stage width,
+positioned near the feet, leaving the face and upper body visible. Short screens
+scroll naturally to energy/actions; navigation remains fixed. No new asset,
+animation, timer, or gameplay change is introduced.
+All six browser scenarios pass after this adjustment, with new assertions for
+painted image width, coin proportion, and face/upper-body clearance. This framing
+follow-up still needs deployment and a real Telegram visual check.
