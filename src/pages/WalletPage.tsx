@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { WalletTopbar } from '../components/WalletTopbar';
 import { beginCell } from '@ton/core';
 import { TonConnectButton, TonConnectUIProvider, useIsConnectionRestored, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { confirmTonPayment, createTonPaymentIntent, fetchPendingPayments, fetchTransactions, type TonPaymentIntent } from '../services/commerceService';
@@ -91,12 +91,12 @@ function ConnectedWalletPage() {
     } finally { busy.current = false; if (mounted.current) setPaying(false); }
   };
 
-  return <main className="page commerce-page wallet-page">
-    <Link className="brand" to="/">MTX</Link>
+  return <main className="page commerce-page wallet-page robot-wallet">
+    <WalletTopbar destination="history" />
     <header className="commerce-header"><div><h1>{text('Wallet', 'کیف پول')}</h1><p>{text('TON Testnet connection and payment status', 'اتصال شبکه آزمایشی TON و وضعیت پرداخت')}</p></div><span className={`wallet-dot ${testnetConnected ? 'connected' : ''}`} /></header>
     <section className="wallet-card">
       <h2>{!restored ? text('Restoring wallet…', 'در حال بازیابی کیف پول…') : testnetConnected ? text('Testnet wallet connected', 'کیف پول آزمایشی متصل است') : text('Connect TON Testnet wallet', 'اتصال کیف پول آزمایشی TON')}</h2>
-      <p>{address || text('Connect through TON Connect.', 'از طریق TON Connect متصل شوید.')}</p>
+      <p dir={address ? 'ltr' : undefined}>{address || text('Connect through TON Connect.', 'از طریق TON Connect متصل شوید.')}</p>
       {authStatus === 'authenticated' ? <TonConnectButton /> : <p>{text('Open MTX inside Telegram and sign in first.', 'ابتدا MTX را در تلگرام باز کنید و وارد شوید.')}</p>}
       {tonWallet && !testnetConnected && <p>{text('Switch your wallet to TON Testnet.', 'کیف پول را به شبکه آزمایشی TON تغییر دهید.')}</p>}
       {authStatus === 'authenticated' && <button className="button ghost" disabled={paying} onClick={() => setReload((value) => value + 1)}>{text('Recover payment orders', 'بازیابی سفارش‌های پرداخت')}</button>}

@@ -24,6 +24,7 @@
     "test:commerce:design:ui": "node scripts/test-commerce-design-ui.mjs",
     "test:rewards:design:ui": "node scripts/test-rewards-design-ui.mjs",
     "test:social:design:ui": "node scripts/test-social-design-ui.mjs",
+    "test:wallet:design:ui": "node scripts/test-wallet-design-ui.mjs",
     "test:daily:archive": "node scripts/test-daily-archive.mjs",
     "test:integration": "node --experimental-strip-types server/integration/run.mjs",
     "test:integration:isolated": "node --experimental-strip-types server/integration/isolated.mjs",
