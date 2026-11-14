@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { SocialTopbar } from '../components/SocialTopbar';
 import { useI18n } from '../hooks/useI18n';
 import { useRewardRequest } from '../hooks/useRewardRequest';
 import { acceptReferral, fetchReferral } from '../services/socialService';
@@ -64,8 +64,8 @@ export function ReferralPage() {
       ? text('Referral service is temporarily unavailable.', 'سرویس دعوت موقتاً در دسترس نیست.')
       : text('Referral acceptance could not be confirmed. Check the code and refresh status before trying again.', 'پذیرش دعوت تأیید نشد. کد را بررسی کنید و پیش از تلاش دوباره، وضعیت را تازه‌سازی کنید.');
 
-  return <main className="page commerce-page">
-    <Link className="brand" to="/">MTX</Link>
+  return <main className="page commerce-page robot-social">
+    <SocialTopbar destination="leaderboard" />
     <section className="referral-card">
       <h1>{text('Invite friends', 'دعوت دوستان')}</h1>
       <p>{text('Your code', 'کد شما')}</p>
