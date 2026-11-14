@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { RewardTopbar } from '../components/RewardTopbar';
+import { GameIcon } from '../components/navigation/GameIcon';
 import { useI18n } from '../hooks/useI18n';
 import { toggleComboSelection } from '../services/dailyChallengeService';
 import { claimDaily, claimDailyChallenge, fetchDaily, fetchDailyChallenges } from '../services/socialService';
@@ -54,11 +55,13 @@ export function DailyRewardPage() {
     if (await request.run('daily', claimDaily)) setFeedback(text('Daily reward received.', 'پاداش روزانه دریافت شد.'));
   };
 
-  return <main className="page commerce-page">
-    <Link className="brand" to="/">MTX</Link>
-    <section className="daily-card">
+  return <main className="page commerce-page robot-rewards">
+    <RewardTopbar destination="missions" />
+    <header className="commerce-header"><h1>{text('Daily Reward', 'پاداش روزانه')}</h1></header>
+    <section className={`daily-card${daily?.claimed ? ' reward-claimed' : ''}`}>
+      <div className="reward-emblem"><GameIcon name="earn" /></div>
       <span>{text('Day', 'روز')} {daily ? number(Math.min(7, daily.claimed ? daily.streak : daily.streak + 1)) : '—'}</span>
-      <h1>{daily ? number(daily.reward) : '—'} MTX</h1>
+      <h2 className="daily-amount"><bdi dir="ltr">{daily ? number(daily.reward) : '—'} MTX</bdi></h2>
       <p>{text('Current streak', 'تداوم فعلی')}: {daily ? number(daily.streak) : '—'} {text('days', 'روز')}</p>
       <div className="streak-row">{[1, 2, 3, 4, 5, 6, 7].map((day) => <i className={day <= (daily?.streak ?? 0) ? 'active' : ''} key={day}>{number(day)}</i>)}</div>
       <button className="button primary" disabled={!request.ready || daily?.claimed} onClick={() => void submitDaily()}>{daily?.claimed ? text('Come back tomorrow', 'فردا برگردید') : request.pending === 'daily' ? text('Checking…', 'در حال بررسی…') : text('Claim reward', 'دریافت جایزه')}</button>
@@ -85,7 +88,7 @@ export function DailyRewardPage() {
         <h2>{text('Daily Cipher', 'رمز روزانه')}</h2>
         <p>{ar ? 'اسم اللعبة الحالية' : text(challenges?.cipher.hint ?? 'The current game name', 'نام فعلی بازی')}</p>
         <input className="cipher-input" disabled={!request.ready || Boolean(challenges?.cipher.claimed)} aria-label={text('Daily cipher answer', 'پاسخ رمز روزانه')} maxLength={cipherLength} value={cipher} placeholder={Array.from({ length: cipherLength }, () => '•').join(' ')} onChange={(event) => setCipher(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
-        <small className="cipher-counter">{number(cipher.length)} / {number(cipherLength)}</small>
+        <small className="cipher-counter"><bdi dir="ltr">{number(cipher.length)} / {number(cipherLength)}</bdi></small>
         <button className="button primary" disabled={!request.ready || Boolean(challenges?.cipher.claimed) || cipher.trim().length !== cipherLength} onClick={() => void submitCipher()}>{challenges?.cipher.claimed ? text('Claimed', 'دریافت‌شده') : request.pending === 'cipher' ? text('Checking…', 'در حال بررسی…') : `${text('Decode for', 'رمزگشایی برای')} ${number(challenges?.cipher.reward ?? 500)} MTX`}</button>
       </article>
     </section>

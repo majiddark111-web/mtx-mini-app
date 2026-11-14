@@ -1,0 +1,61 @@
+.app-shell:has(.robot-rewards) { background: #001027; }
+:root .page.robot-rewards { color: #edf5ff; background: radial-gradient(ellipse at top, #093867, #001027 70%); padding-bottom: 70px; }
+.reward-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 22px; margin-bottom: 24px; border-bottom: 1px solid #176995; }
+.reward-brand { color: #edf5ff; text-decoration: none; font-size: 26px; font-weight: 850; white-space: nowrap; }
+.reward-brand span { color: #42d8ff; }
+.reward-switch { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 14px; border: 1px solid #176995; border-radius: 14px; background: #062c47; color: #b5eaff; text-decoration: none; font-weight: 650; }
+.reward-switch svg { flex-shrink: 0; width: 22px; height: 22px; }
+.robot-rewards .commerce-header { padding: 0 0 24px; }
+.robot-rewards .commerce-header h1 { color: #edf5ff; font-size: 28px; }
+:root .page.robot-rewards .commerce-header p { color: #a8cbe8; font-size: 14px; line-height: 1.7; }
+:root .page.robot-rewards :is(.daily-card, .social-card, .challenge-grid > article) { color: #edf5ff; background: linear-gradient(145deg, #073158, #02162e); border: 1px solid #176995; border-radius: 24px; padding: 24px; min-width: 0; overflow-wrap: anywhere; }
+.robot-rewards .daily-card { margin: 0 auto; max-width: 620px; }
+.reward-emblem { display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid #8d7739; border-radius: 22px; margin: 0 auto 16px; color: #ffe084; background: radial-gradient(circle at top, #195172, #05213c); }
+.reward-emblem svg { width: 42px; height: 42px; }
+.robot-rewards .daily-card > span { color: #b5eaff; font-size: 14px; }
+.robot-rewards .daily-amount { color: #ffe084; font-size: clamp(28px, 8vw, 44px); margin: 12px 0; font-variant-numeric: tabular-nums; }
+.robot-rewards .daily-card p { color: #a8cbe8; font-size: 14px; line-height: 1.7; }
+.robot-rewards .streak-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 20px 0; }
+.robot-rewards .streak-row i { display: grid; place-items: center; width: auto; height: 40px; background: #04162b; color: #a8cbe8; border: 1px solid #277ba6; border-radius: 12px; font-size: 14px; font-style: normal; }
+.robot-rewards .streak-row i.active { color: #ffe084; background: #0a415b; border-color: #42d8ff; box-shadow: inset 0 -2px #ffe084; }
+.robot-rewards .button { min-height: 48px; border-radius: 14px; padding: 12px 16px; line-height: 1.5; }
+.robot-rewards .button.primary { background: linear-gradient(120deg, #ffe492, #ffcc40); color: #082448; border: 1px solid #ffe084; font-weight: 750; }
+.robot-rewards .button:disabled { color: #b1c5d8; background: #18324a; border-color: #35536b; opacity: 1; cursor: not-allowed; }
+.robot-rewards .reward-claimed .button:disabled { color: #b2f0d5; background: #073c38; border-color: #24796b; }
+.robot-rewards .daily-card .button { width: 100%; }
+.robot-rewards .social-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.robot-rewards .social-card { align-content: start; gap: 14px; }
+.robot-rewards .social-card h2 { color: #edf5ff; font-size: 19px; line-height: 1.5; }
+.robot-rewards .social-card p { color: #a8cbe8; font-size: 14px; }
+.robot-rewards .social-card > strong { color: #ffe084; font-size: 22px; }
+.robot-rewards .social-card .tag { justify-self: start; color: #b5eaff; background: #062c47; border: 1px solid #277ba6; padding: 4px 10px; font-size: 12px; }
+.robot-rewards .progress { height: 8px; background: #164161; border-radius: 10px; overflow: hidden; }
+.robot-rewards .progress > div { height: 100%; background: linear-gradient(90deg, #1ba7dc, #42e9ff); }
+.robot-rewards .challenge-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; margin-block: 24px; }
+.robot-rewards .challenge-grid > article { gap: 16px; }
+.robot-rewards .challenge-grid h2 { font-size: 22px; }
+.robot-rewards .challenge-grid p { color: #a8cbe8; font-size: 14px; line-height: 1.7; }
+.robot-rewards .combo-slots { gap: 8px; }
+.robot-rewards .combo-slot { color: #b5eaff; background: #031d36; border-color: #277ba6; min-height: 56px; }
+.robot-rewards .combo-slot.filled { border-color: #ffe084; background: #093b56; }
+.robot-rewards .combo-slot small { color: #ffe084; }
+.robot-rewards .combo-option { color: #b5eaff; background: #031d36; border-color: #277ba6; min-width: 0; min-height: 104px; padding-top: 24px; }
+.robot-rewards .combo-option.selected { color: #ffe084; background: #093b56; border-color: #ffe084; box-shadow: none; }
+.robot-rewards .combo-option:disabled:not(.selected) { opacity: 1; color: #a8b9c9; background: #10283e; border-color: #35536b; }
+.robot-rewards .combo-option small { font-size: 12px; line-height: 1.5; }
+.robot-rewards .combo-order { color: #082448; background: #ffe084; }
+.robot-rewards .cipher-input { color: #edf5ff; background: #04162b; border-color: #277ba6; min-width: 0; width: 100%; min-height: 56px; direction: ltr; letter-spacing: .4em; }
+.robot-rewards .cipher-input:disabled { color: #a8b9c9; background: #10283e; }
+.robot-rewards .cipher-counter { color: #a8cbe8; }
+.robot-rewards > p[role="status"], .robot-rewards .challenge-feedback { color: #b5eaff; background: #031d36; border: 1px solid #277ba6; border-radius: 16px; padding: 18px; line-height: 1.7; }
+.robot-rewards .challenge-feedback.success { color: #b2f0d5; background: #073c38; border-color: #24796b; }
+.robot-rewards .challenge-feedback.error { color: #ffd5c4; background: #362128; border-color: #bb655e; }
+.robot-rewards :is(a, button, input):focus-visible { outline: 3px solid #42d8ff; outline-offset: 4px; }
+@media (max-width: 540px) { .robot-rewards .social-list { grid-template-columns: 1fr; } }
+@media (max-width: 360px) {
+  .reward-brand { font-size: 23px; }
+  .reward-switch { padding-inline: 8px; font-size: 12px; }
+  :root .page.robot-rewards :is(.daily-card, .social-card, .challenge-grid > article) { padding: 18px; }
+  .robot-rewards .combo-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .robot-rewards .streak-row { gap: 4px; }
+}

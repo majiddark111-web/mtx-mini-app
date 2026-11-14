@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'No missions available right now.': 'لا توجد مهام متاحة حاليًا.',
   'Signing in…': 'جارٍ تسجيل الدخول…',
   'Reopen MTX in Telegram to view your profile.': 'أعد فتح MTX في تيليجرام لعرض ملفك الشخصي.',
   'Profile could not load. Please retry.': 'تعذّر تحميل الملف الشخصي. حاول مجددًا.',
