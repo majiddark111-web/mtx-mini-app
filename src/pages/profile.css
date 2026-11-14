@@ -1,0 +1,43 @@
+.app-shell:has(.robot-profile) { background: #001027; }
+.page.robot-profile { color: #edf5ff; background: radial-gradient(ellipse at top, #093867, #001027 70%); padding-bottom: 70px; }
+.robot-profile > * { max-width: 680px; margin-inline: auto; }
+.profile-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 22px; border-bottom: 1px solid #176995; }
+.profile-brand { color: #edf5ff; text-decoration: none; font-size: 26px; font-weight: 850; }
+.profile-brand span { color: #42d8ff; }
+.profile-settings { color: #b5eaff; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; }
+.profile-settings svg { width: 28px; height: 28px; }
+.robot-profile > h1 { font-size: 24px; margin-block: 22px 16px; }
+.profile-identity { background: linear-gradient(140deg, #073158, #02162e); border: 1px solid #147db4; border-radius: 24px; padding: 24px 18px; text-align: center; }
+.profile-avatar { position: relative; display: grid; place-items: center; width: 80px; height: 80px; margin: auto; border: 2px solid #42d8ff; border-radius: 50%; background: #062c47; color: #b5eaff; overflow: hidden; }
+.profile-avatar svg { width: 48px; height: 48px; }
+.profile-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.profile-identity h2 { font-size: 22px; margin: 14px 0 8px; overflow-wrap: anywhere; }
+.profile-rank { color: #ffe084; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.profile-rank svg { width: 22px; height: 22px; }
+.profile-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 24px 0 18px; }
+.profile-metrics > div { display: flex; flex-direction: column; gap: 8px; padding: 16px 8px; border: 1px solid #176995; border-radius: 16px; background: #031d36; }
+.profile-metrics dt { color: #a8cbe8; font-size: 13px; }
+.profile-metrics dd { margin: 0; color: #edf5ff; font-size: clamp(20px, 5vw, 28px); font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.profile-income { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border-top: 1px solid #176995; padding-top: 16px; }
+.profile-income p { color: #a8cbe8; font-size: 13px; margin: 0; }
+.profile-income strong { display: block; color: #42d8ff; margin-top: 6px; overflow-wrap: anywhere; }
+.profile-achievements { margin-block: 24px; }
+.profile-achievements > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.profile-achievements h2 { margin: 0; font-size: 22px; }
+.profile-achievements header p { color: #a8cbe8; font-size: 13px; line-height: 1.6; margin: 6px 0 0; }
+.profile-achievements header strong { flex-shrink: 0; color: #ffe084; border: 1px solid #8d7739; background: #292817; border-radius: 20px; padding: 6px 10px; }
+.profile-badges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.profile-badge { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; border: 1px solid #176995; background: #031d36; padding: 16px; border-radius: 18px; }
+.profile-badge.is-unlocked { border-color: #8d7739; background: linear-gradient(145deg, #293023, #031d36); }
+.profile-badge-icon { display: grid; place-items: center; background: #093251; border-radius: 12px; width: 40px; height: 40px; font-size: 24px; }
+.profile-badge h3 { font-size: 16px; margin: 0; overflow-wrap: anywhere; }
+.profile-badge p { color: #a8cbe8; font-size: 13px; line-height: 1.6; margin: 6px 0 12px; }
+.profile-badge small { display: block; color: #b5eaff; margin-top: 8px; }
+.profile-badge.is-unlocked small { color: #ffe084; }
+.profile-progress { height: 6px; background: #164161; border-radius: 6px; overflow: hidden; }
+.profile-progress i { display: block; height: 100%; background: linear-gradient(90deg, #1ba7dc, #42e9ff); }
+.profile-badge.is-unlocked .profile-progress i { background: #ffe084; }
+.profile-message { color: #b5eaff; background: #031d36; border: 1px solid #176995; border-radius: 18px; padding: 24px; line-height: 1.7; }
+.profile-message button { display: block; min-height: 48px; margin-top: 12px; padding: 10px 22px; background: #ffe084; border: 0; border-radius: 12px; color: #082448; font: inherit; font-weight: 700; cursor: pointer; }
+.robot-profile :is(a, button):focus-visible { outline: 3px solid #42d8ff; outline-offset: 4px; }
+@media (max-width: 540px) { .profile-badges { grid-template-columns: 1fr; } }

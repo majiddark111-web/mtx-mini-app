@@ -2,6 +2,11 @@ import { useCallback } from 'react';
 import { usePreferences } from './usePreferences';
 
 const ar: Record<string, string> = {
+  'Signing in…': 'جارٍ تسجيل الدخول…',
+  'Reopen MTX in Telegram to view your profile.': 'أعد فتح MTX في تيليجرام لعرض ملفك الشخصي.',
+  'Profile could not load. Please retry.': 'تعذّر تحميل الملف الشخصي. حاول مجددًا.',
+  'Loading profile…': 'جارٍ تحميل الملف الشخصي…',
+  'No achievements yet.': 'لا توجد إنجازات بعد.',
   'Recent recorded activity; daily claims are archived from the archive update onward.': 'النشاط المسجّل مؤخرًا؛ تُحفظ المكافآت اليومية منذ تحديث الأرشيف.',
   'UTC date; exact time unavailable': 'تاريخ UTC؛ الوقت الدقيق غير متاح',
   'Notification status could not be confirmed. Refresh without marking again.': 'تعذّر تأكيد حالة الإشعارات. حدّث الحالة دون تكرار العملية.',
