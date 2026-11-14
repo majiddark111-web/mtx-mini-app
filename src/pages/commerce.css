@@ -1,0 +1,45 @@
+.app-shell:has(.robot-commerce) { background: #001027; }
+:root .page.robot-commerce { color: #edf5ff; background: radial-gradient(ellipse at top, #093867, #001027 70%); padding-bottom: 70px; }
+.commerce-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 22px; margin-bottom: 24px; border-bottom: 1px solid #176995; }
+.commerce-brand { color: #edf5ff; text-decoration: none; font-size: 26px; font-weight: 850; white-space: nowrap; }
+.commerce-brand span { color: #42d8ff; }
+.commerce-switch { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 14px; border: 1px solid #176995; border-radius: 14px; background: #062c47; color: #b5eaff; text-decoration: none; font-weight: 650; }
+.commerce-switch svg { flex-shrink: 0; width: 22px; height: 22px; }
+:root .robot-commerce .commerce-header { align-items: flex-start; flex-wrap: wrap; gap: 16px; padding: 0 0 24px; }
+.robot-commerce .commerce-header > div { flex: 1 1 180px; min-width: 0; }
+.robot-commerce .commerce-header h1 { color: #edf5ff; font-size: 28px; }
+:root .page.robot-commerce .commerce-header p { color: #a8cbe8; font-size: 14px; line-height: 1.7; }
+.robot-commerce .commerce-header > strong { color: #ffe084; background: #292817; border: 1px solid #8d7739; padding: 10px 14px; border-radius: 16px; font-size: 16px; max-width: 100%; overflow-wrap: anywhere; }
+.robot-commerce .category-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+:root .page.robot-commerce .category-tab { flex: 1 1 72px; color: #b5eaff; background: #031d36; border: 1px solid #176995; border-radius: 16px; min-height: 76px; padding: 12px 6px; box-shadow: none; transform: none; }
+:root .page.robot-commerce .category-tab.active { color: #ffe084; background: linear-gradient(145deg, #075479, #05213c); border-color: #42d8ff; box-shadow: inset 0 -3px #ffe084; }
+:root .robot-commerce .more-filters { padding: 0 16px; background: #031d36; border: 1px solid #176995; border-radius: 16px; margin-bottom: 18px; }
+.robot-commerce .more-filters summary { color: #b5eaff; min-height: 48px; padding: 14px 0; font-size: 14px; }
+.robot-commerce .commerce-tools { padding-bottom: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.robot-commerce .commerce-tools :is(input, select) { width: 100%; min-width: 0; min-height: 48px; border-color: #277ba6; color: #edf5ff; background: #04162b; font-size: 16px; }
+.robot-commerce .commerce-tools input::placeholder { color: #a8cbe8; opacity: 1; }
+.robot-commerce .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+:root .page.robot-commerce :is(.product-card, .purchase-history, .empty-state) { color: #edf5ff; border: 1px solid #176995; border-radius: 22px; background: linear-gradient(145deg, #073158, #02162e); padding: 20px; }
+.robot-commerce .product-card { gap: 12px; min-width: 0; overflow-wrap: anywhere; }
+.robot-commerce .product-icon { width: 64px; height: 64px; border-color: #298bbe; color: #ffe084; background: radial-gradient(circle at top, #0b507c, #06213d); border-radius: 18px; margin-bottom: 0; font-size: 32px; }
+.robot-commerce .product-card h2 { color: #edf5ff; font-size: 19px; margin: 0; line-height: 1.4; }
+:root .page.robot-commerce .product-card p { color: #a8cbe8; font-size: 14px; line-height: 1.7; }
+.robot-commerce .product-card > strong { color: #ffe084; font-size: 18px; font-variant-numeric: tabular-nums; }
+.robot-commerce .tag { align-self: flex-start; color: #b5eaff; background: #062c47; border-color: #277ba6; padding: 4px 10px; font-size: 12px; }
+.robot-commerce .tag.limited { color: #ffe084; background: #292817; border-color: #8d7739; }
+.robot-commerce .button { min-height: 48px; border-radius: 14px; padding: 12px 16px; line-height: 1.5; }
+.robot-commerce .button.primary { color: #082448; background: linear-gradient(120deg, #ffe492, #ffcc40); font-weight: 750; border: 1px solid #ffe084; }
+.robot-commerce .button.ghost { color: #b5eaff; background: #062c47; border: 1px solid #277ba6; }
+.robot-commerce .button:disabled { color: #b1c5d8; background: #18324a; border-color: #35536b; opacity: 1; cursor: not-allowed; }
+.robot-commerce .purchase-history { margin-top: 24px; overflow-wrap: anywhere; }
+.robot-commerce .purchase-history h2 { font-size: 20px; margin: 0 0 16px; }
+.robot-commerce .purchase-history p { color: #b5eaff; border-color: #176995; font-size: 14px; line-height: 1.7; padding: 12px 0; margin: 0; }
+:root .page.robot-commerce :is(.status-message, [role="alert"], p[role="status"]) { position: static; transform: none; margin: 18px 0; padding: 16px; color: #b5eaff; background: #031d36; border: 1px solid #277ba6; border-radius: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.robot-commerce .status-message { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.robot-commerce [role="alert"] { border-inline-start: 4px solid #ffe084; }
+.robot-commerce :is(a, button, input, select, summary):focus-visible { outline: 3px solid #42d8ff; outline-offset: 4px; }
+@media (max-width: 480px) {
+  .robot-commerce .product-grid, .robot-commerce .commerce-tools { grid-template-columns: 1fr; }
+  .commerce-brand { font-size: 24px; }
+  .commerce-switch { padding-inline: 10px; font-size: 13px; }
+}
