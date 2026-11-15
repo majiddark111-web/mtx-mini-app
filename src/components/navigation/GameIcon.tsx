@@ -1,4 +1,5 @@
 const paths = {
+  notifications: 'M6 8a6 6 0 0 1 12 0v5l3 4H3l3-4Zm4 12a2 2 0 0 0 4 0',
   friends: 'M3 21v-2a6 6 0 0 1 12 0v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-7a4 4 0 0 1 0 8m1 3a5 5 0 0 1 4 5v1',
   store: 'M5 7h14l2 15H3ZM8 7V5a4 4 0 0 1 8 0v2',
   trophy: 'M7 3h10v7a5 5 0 0 1-10 0Zm0 2H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4m-5 3v6m-5 0h10',
