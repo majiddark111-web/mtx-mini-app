@@ -25,6 +25,7 @@
     "test:rewards:design:ui": "node scripts/test-rewards-design-ui.mjs",
     "test:social:design:ui": "node scripts/test-social-design-ui.mjs",
     "test:wallet:design:ui": "node scripts/test-wallet-design-ui.mjs",
+    "test:wallet:lazy:ui": "node scripts/test-wallet-lazy-ui.mjs",
     "test:utility:design:ui": "node scripts/test-utility-design-ui.mjs",
     "test:game:modals:ui": "node scripts/test-game-modals-ui.mjs",
     "test:daily:archive": "node scripts/test-daily-archive.mjs",

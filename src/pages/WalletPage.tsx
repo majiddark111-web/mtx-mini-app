@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { WalletTopbar } from '../components/WalletTopbar';
-import { beginCell } from '@ton/core';
 import { TonConnectButton, TonConnectUIProvider, useIsConnectionRestored, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { confirmTonPayment, createTonPaymentIntent, fetchPendingPayments, fetchTransactions, type TonPaymentIntent } from '../services/commerceService';
 import { preparePaymentOrder, pendingPayments, removeConfirmedPayment, savePendingPayment } from '../services/pendingPaymentService';
@@ -81,6 +80,12 @@ function ConnectedWalletPage() {
       setSeparatePurchase(false);
       setOrders((items) => [...items.filter((item) => item.transactionId !== intent.transactionId), intent]);
       if (intent.replayed || intent.expiresAt <= Date.now()) {
+        setMessage(text('Previous order recovered. Check it below; no transaction was resent.', 'سفارش قبلی بازیابی شد. پایین صفحه بررسی کنید؛ تراکنشی دوباره ارسال نشد.')); return;
+      }
+      const { beginCell } = await import('@ton/core');
+      // Loading the payment encoder can outlive the account or the sending deadline.
+      if (!currentAccount()) return;
+      if (intent.expiresAt <= Date.now()) {
         setMessage(text('Previous order recovered. Check it below; no transaction was resent.', 'سفارش قبلی بازیابی شد. پایین صفحه بررسی کنید؛ تراکنشی دوباره ارسال نشد.')); return;
       }
       const payload = beginCell().storeUint(0, 32).storeStringTail(intent.transactionId).endCell().toBoc();

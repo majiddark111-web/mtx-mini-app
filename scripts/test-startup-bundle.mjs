@@ -11,7 +11,7 @@ import { resolve } from 'node:path';
 const result = await build({ configLoader: 'native', logLevel: 'error', build: { write: false } });
 const chunks = new Map(result.output.filter(item => item.type === 'chunk').map(item => [item.fileName, item]));
 const route = suffix => {
-  const matches = [...chunks.values()].filter(chunk => chunk.facadeModuleId?.replaceAll('\\', '/').endsWith(suffix));
+  const matches = [...chunks.values()].filter(chunk => Object.keys(chunk.modules).some(id => id.replaceAll('\\', '/').endsWith(suffix)));
   assert.equal(matches.length, 1, 'Missing or ambiguous bundle entry: ' + suffix);
   return matches[0];
 };
@@ -31,9 +31,15 @@ const home = closure([entry, route('/pages/HomePage.tsx')]);
 const wallet = closure([route('/pages/WalletPage.tsx')]);
 const includesWalletSDK = chunks => chunks.some(chunk =>
   Object.keys(chunk.modules).some(id => id.replaceAll('\\', '/').includes('/node_modules/@tonconnect/')));
+const includesPaymentEncoder = chunks => chunks.some(chunk =>
+  Object.keys(chunk.modules).some(id => id.replaceAll('\\', '/').includes('/node_modules/@ton/core/')));
 console.log('Cold Home JavaScript (gzip bytes, per file):', home.reduce((total, chunk) => total + gzipSync(chunk.code).length, 0));
+console.log('Cold Wallet JavaScript (gzip bytes, per file):', closure([entry, route('/pages/WalletPage.tsx')]).reduce((total, chunk) => total + gzipSync(chunk.code).length, 0));
 assert.ok(!includesWalletSDK(home), 'Home eagerly includes the TON Connect SDK');
 assert.ok(includesWalletSDK(wallet), 'Wallet route is missing the TON Connect SDK');
+assert.ok(!includesPaymentEncoder(home), 'Home eagerly includes the payment encoder');
+assert.ok(!includesPaymentEncoder(wallet), 'Opening Wallet eagerly loads the payment encoder');
+assert.ok(includesPaymentEncoder([...chunks.values()]), 'Payment encoder is missing from the build');
 console.log('PASS: wallet SDK is available to Wallet but excluded from cold Home.');
 
 if (process.argv.includes('--browser')) {
@@ -45,13 +51,15 @@ if (process.argv.includes('--browser')) {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
     const output = new Map(result.output.map(item => ['/' + item.fileName, item]));
     const sdkFiles = new Set(wallet.filter(chunk => includesWalletSDK([chunk])).map(chunk => '/' + chunk.fileName));
-    const loadedSDK = new Set(), errors = [];
+    const loadedSDK = new Set(), errors = [], loadedEncoders = new Set();
+    const encoderFiles = new Set([...chunks.values()].filter(chunk => includesPaymentEncoder([chunk])).map(chunk => '/' + chunk.fileName));
     await context.route('**/*', async route => {
       const url = new URL(route.request().url());
       if (url.origin !== origin || route.request().method() !== 'GET') return route.abort();
       const item = output.get(url.pathname === '/' ? '/index.html' : url.pathname);
       if (!item) return route.fulfill({ status: 404, body: '' });
       if (sdkFiles.has(url.pathname)) loadedSDK.add(url.pathname);
+      if (encoderFiles.has(url.pathname)) loadedEncoders.add(url.pathname);
       const contentType = item.type === 'chunk' ? 'text/javascript' : item.fileName.endsWith('.css') ? 'text/css' : 'text/html';
       return route.fulfill({ contentType, body: item.type === 'chunk' ? item.code : item.source });
     });
@@ -64,6 +72,7 @@ if (process.argv.includes('--browser')) {
     await page.getByRole('heading', { name: 'Wallet', exact: true }).waitFor();
     await page.getByRole('heading', { name: 'Connect TON Testnet wallet' }).waitFor();
     assert.deepEqual(loadedSDK, sdkFiles);
+    assert.equal(loadedEncoders.size, 0, 'Opening Wallet fetched the purchase-only encoder');
     assert.deepEqual(errors, []);
     console.log('PASS: cold Home → Wallet navigation in Chromium; no external requests were forwarded.');
   } finally { await browser.close(); }
